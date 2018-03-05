@@ -12,7 +12,6 @@
 #include "osal_snv.h"
 
 #include "OnBoard.h"
-//#include "hal_adc.h"
 #include "hal_key.h"
 
 #include "gatt.h"
@@ -74,7 +73,7 @@
 // 显示预测温度值的持续时间，20秒
 #define THERMO_SHOW_PRETEMP                   20000
 
-// 默认的传输周期，每1个数据传输一个
+// 默认的传输周期，每1秒传输一个数据
 #define DEFAULT_TRANSMIT_PERIOD         1
 
 /* Ative delay: 125 cycles ~1 msec */
