@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+
+<Workspace>
+  <ConfigDictionary>
+    
+  <CurrentConfigs><Project>CMTechThermometer/CC2541DK-MINI Keyfob</Project></CurrentConfigs></ConfigDictionary>
+  <Desktop>
+    <Static>
+      <Workspace>
+        <ColumnWidths>
+          
+          
+          
+          
+        <Column0>313</Column0><Column1>27</Column1><Column2>27</Column2><Column3>27</Column3></ColumnWidths>
+      </Workspace>
+      <Build>
+        
+        
+        
+        
+      <ColumnWidth0>20</ColumnWidth0><ColumnWidth1>1395</ColumnWidth1><ColumnWidth2>372</ColumnWidth2><ColumnWidth3>93</ColumnWidth3></Build>
+      <TerminalIO/>
+    <Debug-Log><ColumnWidth0>18</ColumnWidth0><ColumnWidth1>1863</ColumnWidth1></Debug-Log><Find-in-Files><ColumnWidth0>664</ColumnWidth0><ColumnWidth1>94</ColumnWidth1><ColumnWidth2>1138</ColumnWidth2></Find-in-Files></Static>
+    <Windows>
+      
+      
+    <Wnd2>
+        <Tabs>
+          <Tab>
+            <Identity>TabID-5477-29625</Identity>
+            <TabName>Workspace</TabName>
+            <Factory>Workspace</Factory>
+            <Session>
+              
+            <NodeDict><ExpandedNode>CMTechThermometer</ExpandedNode><ExpandedNode>CMTechThermometer/APP</ExpandedNode><ExpandedNode>CMTechThermometer/HAL</ExpandedNode><ExpandedNode>CMTechThermometer/HAL/Include</ExpandedNode><ExpandedNode>CMTechThermometer/HAL/Target</ExpandedNode><ExpandedNode>CMTechThermometer/HAL/Target/CC2541Thermometer</ExpandedNode><ExpandedNode>CMTechThermometer/HAL/Target/CC2541Thermometer/Config</ExpandedNode><ExpandedNode>CMTechThermometer/HAL/Target/CC2541Thermometer/Drivers</ExpandedNode><ExpandedNode>CMTechThermometer/HAL/Target/CC2541Thermometer/Includes</ExpandedNode><ExpandedNode>CMTechThermometer/PROFILES</ExpandedNode></NodeDict></Session>
+          </Tab>
+        </Tabs>
+        
+      <SelectedTab>0</SelectedTab></Wnd2><Wnd3>
+        <Tabs>
+          <Tab>
+            <Identity>TabID-542-29923</Identity>
+            <TabName>Build</TabName>
+            <Factory>Build</Factory>
+            <Session/>
+          </Tab>
+        <Tab><Identity>TabID-17267-9670</Identity><TabName>Debug Log</TabName><Factory>Debug-Log</Factory><Session/></Tab><Tab><Identity>TabID-28625-32382</Identity><TabName>Find in Files</TabName><Factory>Find-in-Files</Factory><Session/></Tab><Tab><Identity>TabID-26000-15398</Identity><TabName>Breakpoints</TabName><Factory>Breakpoints</Factory></Tab></Tabs>
+        
+      <SelectedTab>0</SelectedTab></Wnd3></Windows>
+    <Editor>
+      
+      
+      
+      
+    <Pane><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\Source\Dev_HT1621B.h</Filename><XPos>0</XPos><YPos>12</YPos><SelStart>726</SelStart><SelEnd>742</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\Source\CMTechThermometer.h</Filename><XPos>0</XPos><YPos>71</YPos><SelStart>4064</SelStart><SelEnd>4064</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\Source\Dev_HT1621B.c</Filename><XPos>0</XPos><YPos>246</YPos><SelStart>6251</SelStart><SelEnd>6251</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\Source\CMTechThermometer.c</Filename><XPos>0</XPos><YPos>91</YPos><SelStart>3649</SelStart><SelEnd>3649</SelEnd></Tab><ActiveTab>3</ActiveTab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\Source\App_DataProcessor.c</Filename><XPos>0</XPos><YPos>23</YPos><SelStart>783</SelStart><SelEnd>783</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\Source\CMTechThermometer_Main.c</Filename><XPos>0</XPos><YPos>69</YPos><SelStart>3760</SelStart><SelEnd>3760</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\Source\App_Thermometer.h</Filename><XPos>0</XPos><YPos>9</YPos><SelStart>568</SelStart><SelEnd>568</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\Source\App_Thermometer.c</Filename><XPos>0</XPos><YPos>40</YPos><SelStart>1926</SelStart><SelEnd>1926</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\Source\App_DataProcessor.h</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>213</SelStart><SelEnd>213</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\Source\Service_Thermometer.c</Filename><XPos>0</XPos><YPos>201</YPos><SelStart>4938</SelStart><SelEnd>4938</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\Source\Dev_LMT70.h</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>0</SelStart><SelEnd>0</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\Source\Dev_LMT70.c</Filename><XPos>0</XPos><YPos>30</YPos><SelStart>727</SelStart><SelEnd>727</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\Source\Dev_ADS1100.h</Filename><XPos>0</XPos><YPos>0</YPos><SelStart>304</SelStart><SelEnd>304</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\Source\Dev_ADS1100.c</Filename><XPos>0</XPos><YPos>108</YPos><SelStart>2014</SelStart><SelEnd>2014</SelEnd></Tab><Tab><Factory>TextEditor</Factory><Filename>$WS_DIR$\..\..\..\..\Components\hal\target\CC2541Thermometer\hal_i2c.c</Filename><XPos>0</XPos><YPos>234</YPos><SelStart>6725</SelStart><SelEnd>6725</SelEnd></Tab></Pane><ActivePane>0</ActivePane><Sizes><Pane><X>1000000</X><Y>1000000</Y></Pane></Sizes><SplitMode>1</SplitMode></Editor>
+    <Positions>
+      
+      
+      
+      
+      
+    <Top><Row0><Sizes><Toolbar-04790de8><key>iaridepm.enu1</key></Toolbar-04790de8></Sizes></Row0></Top><Left><Row0><Sizes><Wnd2><Rect><Top>-2</Top><Left>-2</Left><Bottom>739</Bottom><Right>404</Right><x>-2</x><y>-2</y><xscreen>200</xscreen><yscreen>211</yscreen><sizeHorzCX>104167</sizeHorzCX><sizeHorzCY>196097</sizeHorzCY><sizeVertCX>211458</sizeVertCX><sizeVertCY>688662</sizeVertCY></Rect></Wnd2></Sizes></Row0></Left><Right><Row0><Sizes/></Row0></Right><Bottom><Row0><Sizes><Wnd3><Rect><Top>-2</Top><Left>-2</Left><Bottom>292</Bottom><Right>1922</Right><x>-2</x><y>-2</y><xscreen>1924</xscreen><yscreen>294</yscreen><sizeHorzCX>1002083</sizeHorzCX><sizeHorzCY>273234</sizeHorzCY><sizeVertCX>104167</sizeVertCX><sizeVertCY>196097</sizeVertCY></Rect></Wnd3></Sizes></Row0></Bottom><Float><Sizes/></Float></Positions>
+  </Desktop>
+</Workspace>
+
+
