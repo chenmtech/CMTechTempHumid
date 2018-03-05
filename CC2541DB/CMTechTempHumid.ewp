@@ -455,7 +455,7 @@
           <state>$PROJ_DIR$\..\..\common</state>
           <state>$PROJ_DIR$\..\..\include</state>
           <state>$PROJ_DIR$\..\..\..\..\Components\hal\include</state>
-          <state>$PROJ_DIR$\..\..\..\..\Components\hal\target\CC2541TempHumid</state>
+          <state>$PROJ_DIR$\..\source\target\CC2541TempHumid</state>
           <state>$PROJ_DIR$\..\..\..\..\Components\osal\include</state>
           <state>$PROJ_DIR$\..\..\..\..\Components\services\saddr</state>
           <state>$PROJ_DIR$\..\..\..\..\Components\ble\include</state>
@@ -6497,73 +6497,73 @@
         <group>
           <name>Config</name>
           <file>
-            <name>$PROJ_DIR$\..\..\..\..\Components\hal\target\CC2541TempHumid\hal_board_cfg.h</name>
+            <name>$PROJ_DIR$\..\Source\target\CC2541TempHumid\hal_board_cfg.h</name>
           </file>
         </group>
         <group>
           <name>Drivers</name>
           <file>
-            <name>$PROJ_DIR$\..\..\..\..\Components\hal\target\CC2541TempHumid\hal_adc.c</name>
+            <name>$PROJ_DIR$\..\Source\target\CC2541TempHumid\hal_adc.c</name>
           </file>
           <file>
-            <name>$PROJ_DIR$\..\..\..\..\Components\hal\target\CC2541TempHumid\hal_aes.c</name>
+            <name>$PROJ_DIR$\..\Source\target\CC2541TempHumid\hal_aes.c</name>
           </file>
           <file>
-            <name>$PROJ_DIR$\..\..\..\..\Components\hal\target\CC2541TempHumid\hal_crc.c</name>
+            <name>$PROJ_DIR$\..\Source\target\CC2541TempHumid\hal_crc.c</name>
           </file>
           <file>
-            <name>$PROJ_DIR$\..\..\..\..\Components\hal\target\CC2541TempHumid\hal_dma.c</name>
+            <name>$PROJ_DIR$\..\Source\target\CC2541TempHumid\hal_dma.c</name>
           </file>
           <file>
-            <name>$PROJ_DIR$\..\..\..\..\Components\hal\target\CC2541TempHumid\hal_flash.c</name>
+            <name>$PROJ_DIR$\..\Source\target\CC2541TempHumid\hal_flash.c</name>
           </file>
           <file>
-            <name>$PROJ_DIR$\..\..\..\..\Components\hal\target\CC2541TempHumid\hal_i2c.c</name>
+            <name>$PROJ_DIR$\..\Source\target\CC2541TempHumid\hal_i2c.c</name>
           </file>
           <file>
-            <name>$PROJ_DIR$\..\..\..\..\Components\hal\target\CC2541TempHumid\hal_key.c</name>
+            <name>$PROJ_DIR$\..\Source\target\CC2541TempHumid\hal_key.c</name>
           </file>
           <file>
-            <name>$PROJ_DIR$\..\..\..\..\Components\hal\target\CC2541TempHumid\hal_lcd.c</name>
+            <name>$PROJ_DIR$\..\Source\target\CC2541TempHumid\hal_lcd.c</name>
           </file>
           <file>
-            <name>$PROJ_DIR$\..\..\..\..\Components\hal\target\CC2541TempHumid\hal_led.c</name>
+            <name>$PROJ_DIR$\..\Source\target\CC2541TempHumid\hal_led.c</name>
           </file>
           <file>
-            <name>$PROJ_DIR$\..\..\..\..\Components\hal\target\CC2541TempHumid\hal_sleep.c</name>
+            <name>$PROJ_DIR$\..\Source\target\CC2541TempHumid\hal_sleep.c</name>
           </file>
           <file>
-            <name>$PROJ_DIR$\..\..\..\..\Components\hal\target\CC2541TempHumid\hal_startup.c</name>
+            <name>$PROJ_DIR$\..\Source\target\CC2541TempHumid\hal_startup.c</name>
           </file>
           <file>
-            <name>$PROJ_DIR$\..\..\..\..\Components\hal\target\CC2541TempHumid\hal_timer.c</name>
+            <name>$PROJ_DIR$\..\Source\target\CC2541TempHumid\hal_timer.c</name>
           </file>
           <file>
-            <name>$PROJ_DIR$\..\..\..\..\Components\hal\target\CC2541TempHumid\hal_uart.c</name>
+            <name>$PROJ_DIR$\..\Source\target\CC2541TempHumid\hal_uart.c</name>
           </file>
         </group>
         <group>
           <name>Includes</name>
           <file>
-            <name>$PROJ_DIR$\..\..\..\..\Components\hal\target\CC2541TempHumid\hal_aes.h</name>
+            <name>$PROJ_DIR$\..\Source\target\CC2541TempHumid\hal_aes.h</name>
           </file>
           <file>
-            <name>$PROJ_DIR$\..\..\..\..\Components\hal\target\CC2541TempHumid\hal_ccm.h</name>
+            <name>$PROJ_DIR$\..\Source\target\CC2541TempHumid\hal_ccm.h</name>
           </file>
           <file>
-            <name>$PROJ_DIR$\..\..\..\..\Components\hal\target\CC2541TempHumid\hal_crc.h</name>
+            <name>$PROJ_DIR$\..\Source\target\CC2541TempHumid\hal_crc.h</name>
           </file>
           <file>
-            <name>$PROJ_DIR$\..\..\..\..\Components\hal\target\CC2541TempHumid\hal_dma.h</name>
+            <name>$PROJ_DIR$\..\Source\target\CC2541TempHumid\hal_dma.h</name>
           </file>
           <file>
-            <name>$PROJ_DIR$\..\..\..\..\Components\hal\target\CC2541TempHumid\hal_i2c.h</name>
+            <name>$PROJ_DIR$\..\Source\target\CC2541TempHumid\hal_i2c.h</name>
           </file>
           <file>
-            <name>$PROJ_DIR$\..\..\..\..\Components\hal\target\CC2541TempHumid\hal_mcu.h</name>
+            <name>$PROJ_DIR$\..\Source\target\CC2541TempHumid\hal_mcu.h</name>
           </file>
           <file>
-            <name>$PROJ_DIR$\..\..\..\..\Components\hal\target\CC2541TempHumid\hal_types.h</name>
+            <name>$PROJ_DIR$\..\Source\target\CC2541TempHumid\hal_types.h</name>
           </file>
         </group>
       </group>
