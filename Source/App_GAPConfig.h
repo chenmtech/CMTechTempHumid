@@ -10,8 +10,10 @@
 //servUUID：本设备包含的服务UUID
 extern void GAPConfig_SetAdvParam(uint16 advInt, uint16 servUUID);
 
+
 //使能或停止广播
 extern void GAPConfig_EnableAdv(uint8 enable);
+
 
 //设置与连接相关的参数
 //连接间隔时间：范围7.5ms~4s之间1.25ms的整数倍。如果min和max不一样，芯片会选择一个靠近max的值
@@ -24,12 +26,15 @@ extern void GAPConfig_EnableAdv(uint8 enable);
 //when: 连接建立后多少秒开始更新参数，单位s
 extern void GAPConfig_SetConnParam(uint16 minInt, uint16 maxInt, uint16 latency, uint16 timeout, uint8 when);
 
+
 //终止连接。从机没有权利发起连接，但可以主动终止连接
 extern bStatus_t GAPConfig_TerminateConn();
+
 
 //设置GGS参数
 //devName: 设备名属性值
 extern void GAPConfig_SetGGSParam(uint8* devName);
+
 
 //设置绑定相关参数
 // passkey : 配对密码

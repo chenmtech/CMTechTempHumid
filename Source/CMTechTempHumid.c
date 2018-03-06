@@ -44,7 +44,6 @@
   #include "oad_target.h"
 #endif
 
-#include "App_DataProcessor.h"
 
 
 /*********************************************************************
@@ -62,8 +61,8 @@
 // 显示预测温度值的持续时间，20秒
 #define THERMO_SHOW_PRETEMP                   20000
 
-// 默认的传输周期，每1秒传输一个数据
-#define DEFAULT_TRANSMIT_PERIOD         1
+// 缺省采样周期，1秒
+#define DEFAULT_PERIOD         1000
 
 /* 延时n毫秒 */
 #define ST_HAL_DELAY(n) st( { volatile uint32 i; for (i=0; i<(n); i++) { }; } )
@@ -85,11 +84,11 @@ static uint8 curMode = MODE_STANDBY;
 // 是否开始AD采集，初始化为停止采集
 static bool thermoADEnabled = FALSE;
 
-// 数据采集周期，固定为传输的计时单位1秒
-static uint16 ADPeriod = TEMPHUMID_TIME_UNIT;
+// 数据采样周期，1秒
+static uint16 ADPeriod = DEFAULT_PERIOD;
 
 // 蓝牙数据传输周期，用ADPeriod的倍数来表示，默认为1倍
-static uint8 transNumOfADPeriod = DEFAULT_TRANSMIT_PERIOD;
+static uint8 transNumOfADPeriod = 1;
 
 // 用于记录采样次数，是否需要通过蓝牙发送数据
 static uint8 haveSendNum = 0;
@@ -169,14 +168,14 @@ void TempHumid_Init( uint8 task_id )
   // GAP 配置
   //配置广播参数
   GAPConfig_SetAdvParam(800, TEMPHUMID_SERV_UUID);
-  // 初始化不广播
-  GAPConfig_EnableAdv(FALSE);
+  // 初始化立刻广播
+  GAPConfig_EnableAdv(TRUE);
 
   //配置连接参数
   GAPConfig_SetConnParam(200, 200, 5, 10000, 1);
 
   //配置GGS，设置设备名
-  GAPConfig_SetGGSParam("Thermometer");
+  GAPConfig_SetGGSParam("Temp&Humid");
 
   //配置绑定参数
   GAPConfig_SetBondingParam(0, GAPBOND_PAIRING_MODE_WAIT_FOR_REQ);
@@ -519,8 +518,8 @@ static void tempHumidServiceCB( uint8 paramID )
 
   switch (paramID)
   {
-    case TEMPHUMID_CONF:
-      TempHumid_GetParameter( TEMPHUMID_CONF, &newValue );
+    case TEMPHUMID_CTRL:
+      TempHumid_GetParameter( TEMPHUMID_CTRL, &newValue );
       
       if ( newValue == TEMPHUMID_CONF_STANDBY)  // 停止采集，进入待机模式
       {
@@ -567,10 +566,10 @@ static void initAsStandbyMode()
   curMode = MODE_STANDBY;
   
   // 采样周期为1秒
-  ADPeriod = TEMPHUMID_TIME_UNIT;
+  ADPeriod = DEFAULT_PERIOD;
   
   // 传输周期为采样周期的1倍
-  transNumOfADPeriod = DEFAULT_TRANSMIT_PERIOD;  
+  transNumOfADPeriod = 1;  
   
   // 初始化蓝牙属性
   // 温度为0
@@ -579,7 +578,7 @@ static void initAsStandbyMode()
   
   // 停止采集
   uint8 thermoCfg = TEMPHUMID_CONF_STANDBY;
-  TempHumid_SetParameter( TEMPHUMID_CONF, sizeof(uint8), &thermoCfg );  
+  TempHumid_SetParameter( TEMPHUMID_CTRL, sizeof(uint8), &thermoCfg );  
   
   // 设置传输周期
   TempHumid_SetParameter( TEMPHUMID_PERI, sizeof(uint8), &transNumOfADPeriod ); 
@@ -601,7 +600,7 @@ static void switchFromStandbyToActive( void )
 
   // 获取输出值类型  
   uint8 thermoCfg = tempHumid_GetValueType();
-  TempHumid_SetParameter( TEMPHUMID_CONF, sizeof(uint8), &thermoCfg ); 
+  TempHumid_SetParameter( TEMPHUMID_CTRL, sizeof(uint8), &thermoCfg ); 
   
   // 显示上次最大值后，开始AD采样
   thermoADEnabled = TRUE;
