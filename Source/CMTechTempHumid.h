@@ -21,14 +21,7 @@ extern "C"
 
 // CMTech Thermometer Task Events
 #define TH_START_DEVICE_EVT                   0x0001     // 启动设备事件
-#define TH_PERIODIC_EVT                       0x0002     // 周期采集温度事件 
-#define TH_CALIBRATION_EVT                    0x0004     // 标定事件
-#define TH_SWITCH_MODE_EVT                    0x0008     // 工作模式转换事件
-#define TH_DP_PRECAST_EVT                     0x0010     // 预测温度事件
-#define TH_DP_STABLE_EVT                      0x0020     // 测温稳定事件
-#define TH_TONE_ON_EVT                        0x0040     // 蜂鸣器响
-#define TH_TONE_OFF_EVT                       0x0080     // 蜂鸣器停  
-#define TH_STOP_SHOW_PRETEMP_EVT              0x0100     // 停止显示预测温度值
+#define TH_PERIODIC_EVT                       0x0002     // 周期采集温湿度事件
 
 // 测量控制标记值
 #define TEMPHUMID_CTRL_STOP               0x00    // 停止测量

@@ -40,6 +40,12 @@ CONST uint8 tempHumidPeriodUUID[ATT_UUID_SIZE] =
 };
 
 
+
+
+
+
+
+
 /*
 * 局部变量
 */
@@ -127,6 +133,12 @@ static gattAttribute_t tempHumidServAttrTbl[] =
         &tempHumidPeriod
       },
 };
+
+
+
+
+
+
 
 /*
 * 局部函数
@@ -334,6 +346,12 @@ static void tempHumid_HandleConnStatusCB( uint16 connHandle, uint8 changeType )
 
 
 
+
+
+
+
+
+
 /*
  * 公共函数
 */
@@ -384,19 +402,19 @@ extern bStatus_t TempHumid_SetParameter( uint8 param, uint8 len, void *value )
   {
     // 设置温湿度数据，触发Notification
     case TEMPHUMID_DATA:
-    if ( len == TEMPHUMID_DATA_LEN )
-    {
-      VOID osal_memcpy( tempHumidData, value, TEMPHUMID_DATA_LEN );
-      // See if Notification has been enabled
-      GATTServApp_ProcessCharCfg( tempHumidDataConfig, tempHumidData, FALSE,
-                                 tempHumidServAttrTbl, GATT_NUM_ATTRS( tempHumidServAttrTbl ),
-                                 INVALID_TASK_ID );
-    }
-    else
-    {
-      ret = bleInvalidRange;
-    }
-    break;
+      if ( len == TEMPHUMID_DATA_LEN )
+      {
+        VOID osal_memcpy( tempHumidData, value, TEMPHUMID_DATA_LEN );
+        // See if Notification has been enabled
+        GATTServApp_ProcessCharCfg( tempHumidDataConfig, tempHumidData, FALSE,
+                                   tempHumidServAttrTbl, GATT_NUM_ATTRS( tempHumidServAttrTbl ),
+                                   INVALID_TASK_ID );
+      }
+      else
+      {
+        ret = bleInvalidRange;
+      }
+      break;
 
     // 设置测量控制点
     case TEMPHUMID_CTRL:
