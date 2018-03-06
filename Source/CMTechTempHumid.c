@@ -51,8 +51,8 @@
 */
 #define INVALID_CONNHANDLE                    0xFFFF
 
-// 两种模式：开机模式和待机模式
-#define MODE_ACTIVE         0             // 表示开机模式
+// 两种模式：活动模式和待机模式
+#define MODE_ACTIVE         0             // 表示活动模式
 #define MODE_STANDBY        1             // 表示待机模式
 
 // 显示上次最大温度值的持续时间，默认3秒
@@ -82,19 +82,19 @@ static gaprole_States_t gapProfileState = GAPROLE_INIT;
 static uint8 curMode = MODE_STANDBY;
 
 // 是否开始AD采集，初始化为停止采集
-static bool thermoADEnabled = FALSE;
+//static bool thermoADEnabled = FALSE;
 
 // 数据采样周期，1秒
-static uint16 ADPeriod = DEFAULT_PERIOD;
+//static uint16 ADPeriod = DEFAULT_PERIOD;
 
 // 蓝牙数据传输周期，用ADPeriod的倍数来表示，默认为1倍
-static uint8 transNumOfADPeriod = 1;
+//static uint8 transNumOfADPeriod = 1;
 
 // 用于记录采样次数，是否需要通过蓝牙发送数据
-static uint8 haveSendNum = 0;
+//static uint8 haveSendNum = 0;
 
 // 蜂鸣器响声次数
-static uint8 bzTimes = 0;
+//static uint8 bzTimes = 0;
 
 
 
@@ -113,8 +113,8 @@ static void peripheralStateNotificationCB( gaprole_States_t newState );
 // 温湿度服务回调函数
 static void tempHumidServiceCB( uint8 paramID );
 
-// 初始化为待机模式
-static void initAsStandbyMode();
+// 进入待机模式
+static void tempHumidEnterStandbyMode();
 
 // 从待机模式转换到开机模式
 static void switchFromStandbyToActive( void );
@@ -126,7 +126,7 @@ static void switchFromActiveToStandby( void );
 static void readAndProcessThermoData();
 
 // 初始化IO管脚
-static void initIOPin();
+static void tempHumidInitIOPin();
 
 // 让蜂鸣器响指定次数
 static void turnOnTone(uint8 times);
@@ -157,11 +157,13 @@ static tempHumidServiceCBs_t tempHumid_ServCBs =
 };
 
 
+
+
 /*********************************************************************
  * 公共函数
  */
 
-void TempHumid_Init( uint8 task_id )
+extern void TempHumid_Init( uint8 task_id )
 {
   tempHumid_TaskID = task_id;
 
@@ -189,9 +191,7 @@ void TempHumid_Init( uint8 task_id )
   VOID OADTarget_AddService();                    // OAD Profile
 #endif
   
-  GATTConfig_SetThermoService(&tempHumid_ServCBs);
-
-  RegisterForKeys( tempHumid_TaskID );
+  GATTConfig_SetTempHumidService(&tempHumid_ServCBs);
 
   //在这里初始化GPIO
   //第一：所有管脚，reset后的状态都是输入加上拉
@@ -204,13 +204,11 @@ void TempHumid_Init( uint8 task_id )
     
     // Register for all key events - This app will handle all key events
     
-    initIOPin();
+    tempHumidInitIOPin();
   }
-
-  Thermo_Init();
   
   // 初始化为待机模式
-  initAsStandbyMode();  
+  tempHumidEnterStandbyMode();  
  
   HCI_EXT_ClkDivOnHaltCmd( HCI_EXT_ENABLE_CLK_DIVIDE_ON_HALT );  
 
@@ -220,31 +218,30 @@ void TempHumid_Init( uint8 task_id )
 
 
 // 初始化IO管脚
-static void initIOPin()
+static void tempHumidInitIOPin()
 {
   // 全部设为GPIO
   P0SEL = 0; // Configure Port 0 as GPIO
   P1SEL = 0; // Configure Port 1 as GPIO
   P2SEL = 0; // Configure Port 2 as GPIO
-//
-//  // 除了P0.0和P0.1配置为button输入高电平，其他全部设为输出低电平
-  P0DIR = 0xFC; // Port 0 pins P0.0 and P0.1 as input (buttons),
-//                // all others (P0.1-P0.7) as output
-  P1DIR = 0xFF; // All port 1 pins (P1.0-P1.7) as output
-  P2DIR = 0x1F; // All port 1 pins (P2.0-P2.4) as output
-//  
-  P0 = 0x03; // All pins on port 0 to low except for P0.0 and P0.1(buttons)
-  P1 = 0;   // All pins on port 1 to low
-  P2 = 0;   // All pins on port 2 to low   
+
+  // 全部设为输出低电平
+  P0DIR = 0xFF; 
+  P1DIR = 0xFF; 
+  P2DIR = 0x1F; 
+
+  P0 = 0; 
+  P1 = 0;   
+  P2 = 0;  
   
   // I2C的SDA, SCL设置为GPIO, 输出低电平，否则功耗很大
-  I2CWC = 0x83;
-  I2CIO = 0x00;
+  HalI2CSetAsGPIO();
+  //I2CWC = 0x83;
+  //I2CIO = 0x00;
 }
 
-uint16 TempHumid_ProcessEvent( uint8 task_id, uint16 events )
+extern uint16 TempHumid_ProcessEvent( uint8 task_id, uint16 events )
 {
-
   VOID task_id; // OSAL required parameter that isn't used in this function
 
   if ( events & SYS_EVENT_MSG )
@@ -560,25 +557,25 @@ static void tempHumidServiceCB( uint8 paramID )
 }
 
 
-// 初始化为待机模式
-static void initAsStandbyMode()
+// 进入待机模式
+static void tempHumidEnterStandbyMode()
 {
   curMode = MODE_STANDBY;
   
   // 采样周期为1秒
-  ADPeriod = DEFAULT_PERIOD;
+  //ADPeriod = DEFAULT_PERIOD;
   
   // 传输周期为采样周期的1倍
-  transNumOfADPeriod = 1;  
+  //transNumOfADPeriod = 1;  
   
   // 初始化蓝牙属性
-  // 温度为0
-  uint8 thermoData[TEMPHUMID_DATA_LEN] = { 0, 0 };
-  TempHumid_SetParameter( TEMPHUMID_DATA, TEMPHUMID_DATA_LEN, thermoData );
+  // 温湿度数据为0
+  uint8 tempHumidData[TEMPHUMID_DATA_LEN] = { 0 };
+  TempHumid_SetParameter( TEMPHUMID_DATA, TEMPHUMID_DATA_LEN, tempHumidData );
   
   // 停止采集
-  uint8 thermoCfg = TEMPHUMID_CONF_STANDBY;
-  TempHumid_SetParameter( TEMPHUMID_CTRL, sizeof(uint8), &thermoCfg );  
+  uint8 tempHumidCtrl = TEMPHUMID_CTRL_STOP;
+  TempHumid_SetParameter( TEMPHUMID_CTRL, sizeof(uint8), &tempHumidCtrl );  
   
   // 设置传输周期
   TempHumid_SetParameter( TEMPHUMID_PERI, sizeof(uint8), &transNumOfADPeriod ); 
@@ -633,7 +630,7 @@ static void switchFromActiveToStandby( void )
   // 关硬件
   Thermo_HardwareOff();
   
-  initIOPin();
+  tempHumidInitIOPin();
 }
 
 

@@ -257,7 +257,7 @@ extern uint8 HalI2CWrite(uint8 len, uint8 *pBuf)
 }
 
 // 一定要把I2C的接口设为GPIO才能省电
-extern void HalI2CWrapperEnable()
+extern void HalI2CSetAsGPIO()
 {
   // I2C的SDA, SCL设置为GPIO
   I2CWC = 0x83;   //GPIO,000,SCL pullup disable, SDA pullup disable, SCL output enable, SDA output enable

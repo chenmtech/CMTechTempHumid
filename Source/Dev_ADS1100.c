@@ -69,7 +69,7 @@ extern void ADS1100_TurnOff()
   if(isADOn)
   {
     // 一定要把I2C的接口设为GPIO才能省电
-    HalI2CWrapperEnable();
+    HalI2CSetAsGPIO();
   
   // P1.0 电源管脚配置
     P1SEL &= ~(1<<1);   // 设置为GPIO

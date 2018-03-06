@@ -65,6 +65,6 @@ extern uint8 HalI2CWrite(uint8 len, uint8 *pBuf);
 // disable I2C模块, 主要用在hal_sleep中在休眠模式下关闭I2C
 extern void HalI2CDisable(void);
 
-extern void HalI2CWrapperEnable();
+extern void HalI2CSetAsGPIO();
 
 #endif /*  HAL_I2C_H  */
