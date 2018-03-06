@@ -2,51 +2,53 @@
 #ifndef SERVICE_TEMPHUMID_H
 #define SERVICE_TEMPHUMID_H
 
-// 特征标记
-#define TEMPHUMID_DATA    0       //体温值
-#define TEMPHUMID_CONF    1       //测量控制点
-#define TEMPHUMID_PERI    2       //测量周期
 
-
+// 特征标记位
+#define TEMPHUMID_DATA       0       //温湿度数据
+#define TEMPHUMID_CTRL       1       //测量控制
+#define TEMPHUMID_PERI       2       //测量周期
 
 
 // 服务和特征的16位UUID
 #define TEMPHUMID_SERV_UUID    0xAA60     // 温湿度服务UUID
-#define TEMPHUMID_DATA_UUID    0xAA31
-#define TEMPHUMID_CONF_UUID    0xAA32
-#define TEMPHUMID_PERI_UUID    0xAA33
+#define TEMPHUMID_DATA_UUID    0xAA61     // 温湿度数据UUID
+#define TEMPHUMID_CTRL_UUID    0xAA62     // 测量控制UUID
+#define TEMPHUMID_PERI_UUID    0xAA63     // 测量周期
 
 
 // 服务的bit field
 #define TEMPHUMID_SERVICE               0x00000001
 
-// 体温值的字节长度
-#define TEMPHUMID_DATA_LEN     2
 
-#define TEMPHUMID_MIN_PERIOD        1000    //最小采样周期为1000ms
+// 温湿度值的字节长度
+#define TEMPHUMID_DATA_LEN             8       // 两个long的长度
 
-#define TEMPHUMID_TIME_UNIT         1000    //采样周期时间单位为1000ms
+#define TEMPHUMID_PERIOD_MIN_V         5       //最小采样周期为500ms
+
+#define TEMPHUMID_PERIOD_UNIT          100     //采样周期的单位：100ms
 
 
+// 需要应用层提供的回调函数声明
+// 当特征发生变化时，通知应用层
 typedef NULL_OK void (*tempHumidServiceCB_t)( uint8 paramID );
 
-
+// 需要应用层提供的回调结构体声明
 typedef struct
 {
-  tempHumidServiceCB_t        pfnTempHumidServiceCB;  // Called when characteristic value changes
+  tempHumidServiceCB_t        pfnTempHumidServiceCB;
 } tempHumidServiceCBs_t;
 
 
 // 加载本服务
 extern bStatus_t TempHumid_AddService( uint32 services );
 
-// 登记应用层回调
+// 登记应用层提供的回调结构体实例
 extern bStatus_t TempHumid_RegisterAppCBs( tempHumidServiceCBs_t *appCallbacks );
 
-// 设置特征值
+// 设置特征参数
 extern bStatus_t TempHumid_SetParameter( uint8 param, uint8 len, void *value );
 
-// 读取特征值
+// 读取特征参数
 extern bStatus_t TempHumid_GetParameter( uint8 param, void *value );
 
 #endif
