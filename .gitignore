@@ -58,6 +58,6 @@ dkms.conf
 .DS_Store
 */.DS_Store
 
-settings/
+*/settings/
 dkms.conf
 .DS_Store
