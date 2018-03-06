@@ -1,5 +1,5 @@
 /**************************************************************************************************
-* CMTechTempHumid.c: 应用主源文件
+* tempHumid.c: 应用主源文件
 **************************************************************************************************/
 
 /*********************************************************************
@@ -46,26 +46,15 @@
 
 #include "App_DataProcessor.h"
 
-/*********************************************************************
- * MACROS
- */
 
 /*********************************************************************
- * CONSTANTS
- */
-
-
+ * 常量
+*/
 #define INVALID_CONNHANDLE                    0xFFFF
-
-#if defined ( PLUS_BROADCASTER )
-  #define ADV_IN_CONN_WAIT                    500 // delay 500 ms
-#endif
-
 
 // 两种模式：开机模式和待机模式
 #define MODE_ACTIVE         0             // 表示开机模式
 #define MODE_STANDBY        1             // 表示待机模式
-
 
 // 显示上次最大温度值的持续时间，默认3秒
 #define THERMO_LASTMAXTEMP_SHOWTIME           3000
@@ -76,31 +65,17 @@
 // 默认的传输周期，每1秒传输一个数据
 #define DEFAULT_TRANSMIT_PERIOD         1
 
-/* Ative delay: 125 cycles ~1 msec */
+/* 延时n毫秒 */
 #define ST_HAL_DELAY(n) st( { volatile uint32 i; for (i=0; i<(n); i++) { }; } )
 
 
 /*********************************************************************
- * TYPEDEFS
- */
+ * 局部变量
+*/
+// 任务ID
+static uint8 tempHumid_TaskID;   
 
-/*********************************************************************
- * GLOBAL VARIABLES
- */
-
-/*********************************************************************
- * EXTERNAL VARIABLES
- */
-
-/*********************************************************************
- * EXTERNAL FUNCTIONS
- */
-
-/*********************************************************************
- * LOCAL VARIABLES
- */
-static uint8 CMTechThermometer_TaskID;   // Task ID for internal task/event processing
-
+// GAP状态
 static gaprole_States_t gapProfileState = GAPROLE_INIT;
 
 
@@ -111,7 +86,7 @@ static uint8 curMode = MODE_STANDBY;
 static bool thermoADEnabled = FALSE;
 
 // 数据采集周期，固定为传输的计时单位1秒
-static uint16 ADPeriod = THERMOMETER_TIME_UNIT;
+static uint16 ADPeriod = TEMPHUMID_TIME_UNIT;
 
 // 蓝牙数据传输周期，用ADPeriod的倍数来表示，默认为1倍
 static uint8 transNumOfADPeriod = DEFAULT_TRANSMIT_PERIOD;
@@ -125,15 +100,19 @@ static uint8 bzTimes = 0;
 
 
 /*********************************************************************
- * LOCAL FUNCTIONS
- */
-static void CMTechThermometer_ProcessOSALMsg( osal_event_hdr_t *pMsg );
+ * 局部函数
+*/
+// OSAL 消息处理函数
+static void tempHumid_ProcessOSALMsg( osal_event_hdr_t *pMsg );
 
-static void CMTechThermometer_HandleKeys( uint8 shift, uint8 keys );
+// 按键处理函数
+static void tempHumid_HandleKeys( uint8 shift, uint8 keys );
 
+// 状态变化通知回调函数
 static void peripheralStateNotificationCB( gaprole_States_t newState );
 
-static void thermometerServiceCB( uint8 paramID );
+// 温湿度服务回调函数
+static void tempHumidServiceCB( uint8 paramID );
 
 // 初始化为待机模式
 static void initAsStandbyMode();
@@ -155,54 +134,41 @@ static void turnOnTone(uint8 times);
 
 
 /*********************************************************************
- * PROFILE CALLBACKS
- */
+ * PROFILE and SERVICE 回调结构体实例
+*/
 
-// GAP Role Callbacks
-static gapRolesCBs_t CMTechThermometer_PeripheralCBs =
+// GAP Role 回调结构体实例，结构体是协议栈声明的
+static gapRolesCBs_t tempHumid_PeripheralCBs =
 {
   peripheralStateNotificationCB,  // Profile State Change Callbacks
   NULL                            // When a valid RSSI is read from controller (not used by application)
 };
 
-// GAP Bond Manager Callbacks
-static gapBondCBs_t CMTechThermometer_BondMgrCBs =
+// GAP Bond Manager 回调结构体实例，结构体是协议栈声明的
+static gapBondCBs_t tempHumid_BondMgrCBs =
 {
   NULL,                     // Passcode callback (not used by application)
   NULL                      // Pairing / Bonding state Callback (not used by application)
 };
 
-static thermometerServiceCBs_t CMTechThermometer_ServCBs =
+// 温湿度回调结构体实例，结构体是Serice_TempHumid中声明的
+static tempHumidServiceCBs_t tempHumid_ServCBs =
 {
-  thermometerServiceCB    // Charactersitic value change callback
+  tempHumidServiceCB    // 温湿度服务回调函数实例，函数是Serice_TempHumid中声明的
 };
 
 
 /*********************************************************************
- * PUBLIC FUNCTIONS
+ * 公共函数
  */
 
-/*********************************************************************
- * @fn      SimpleBLEPeripheral_Init
- *
- * @brief   Initialization function for the Simple BLE Peripheral App Task.
- *          This is called during initialization and should contain
- *          any application specific initialization (ie. hardware
- *          initialization/setup, table initialization, power up
- *          notificaiton ... ).
- *
- * @param   task_id - the ID assigned by OSAL.  This ID should be
- *                    used to send messages and set timers.
- *
- * @return  none
- */
-void CMTechTempHumid_Init( uint8 task_id )
+void TempHumid_Init( uint8 task_id )
 {
-  CMTechThermometer_TaskID = task_id;
+  tempHumid_TaskID = task_id;
 
   // GAP 配置
   //配置广播参数
-  GAPConfig_SetAdvParam(800, THERMOMETER_SERV_UUID);
+  GAPConfig_SetAdvParam(800, TEMPHUMID_SERV_UUID);
   // 初始化不广播
   GAPConfig_EnableAdv(FALSE);
 
@@ -224,9 +190,9 @@ void CMTechTempHumid_Init( uint8 task_id )
   VOID OADTarget_AddService();                    // OAD Profile
 #endif
   
-  GATTConfig_SetThermoService(&CMTechThermometer_ServCBs);
+  GATTConfig_SetThermoService(&tempHumid_ServCBs);
 
-  RegisterForKeys( CMTechThermometer_TaskID );
+  RegisterForKeys( tempHumid_TaskID );
 
   //在这里初始化GPIO
   //第一：所有管脚，reset后的状态都是输入加上拉
@@ -250,7 +216,7 @@ void CMTechTempHumid_Init( uint8 task_id )
   HCI_EXT_ClkDivOnHaltCmd( HCI_EXT_ENABLE_CLK_DIVIDE_ON_HALT );  
 
   // Setup a delayed profile startup
-  osal_set_event( CMTechThermometer_TaskID, TH_START_DEVICE_EVT );
+  osal_set_event( tempHumid_TaskID, TH_START_DEVICE_EVT );
 }
 
 
@@ -277,20 +243,7 @@ static void initIOPin()
   I2CIO = 0x00;
 }
 
-/*********************************************************************
- * @fn      SimpleBLEPeripheral_ProcessEvent
- *
- * @brief   Simple BLE Peripheral Application Task event processor.  This function
- *          is called to process all events for the task.  Events
- *          include timers, messages and any other user defined events.
- *
- * @param   task_id  - The OSAL assigned task ID.
- * @param   events - events to process.  This is a bit map and can
- *                   contain more than one event.
- *
- * @return  events not processed
- */
-uint16 CMTechTempHumid_ProcessEvent( uint8 task_id, uint16 events )
+uint16 TempHumid_ProcessEvent( uint8 task_id, uint16 events )
 {
 
   VOID task_id; // OSAL required parameter that isn't used in this function
@@ -299,9 +252,9 @@ uint16 CMTechTempHumid_ProcessEvent( uint8 task_id, uint16 events )
   {
     uint8 *pMsg;
 
-    if ( (pMsg = osal_msg_receive( CMTechThermometer_TaskID )) != NULL )
+    if ( (pMsg = osal_msg_receive( tempHumid_TaskID )) != NULL )
     {
-      CMTechThermometer_ProcessOSALMsg( (osal_event_hdr_t *)pMsg );
+      tempHumid_ProcessOSALMsg( (osal_event_hdr_t *)pMsg );
 
       // Release the OSAL message
       VOID osal_msg_deallocate( pMsg );
@@ -314,10 +267,10 @@ uint16 CMTechTempHumid_ProcessEvent( uint8 task_id, uint16 events )
   if ( events & TH_START_DEVICE_EVT )
   {    
     // Start the Device
-    VOID GAPRole_StartDevice( &CMTechThermometer_PeripheralCBs );
+    VOID GAPRole_StartDevice( &tempHumid_PeripheralCBs );
 
     // Start Bond Manager
-    VOID GAPBondMgr_Register( &CMTechThermometer_BondMgrCBs );
+    VOID GAPBondMgr_Register( &tempHumid_BondMgrCBs );
     
     switchFromStandbyToActive();
 
@@ -329,7 +282,7 @@ uint16 CMTechTempHumid_ProcessEvent( uint8 task_id, uint16 events )
     if(thermoADEnabled)
     {
       readAndProcessThermoData();
-      osal_start_timerEx( CMTechThermometer_TaskID, TH_PERIODIC_EVT, ADPeriod );
+      osal_start_timerEx( tempHumid_TaskID, TH_PERIODIC_EVT, ADPeriod );
     }
     else
     {
@@ -372,7 +325,7 @@ uint16 CMTechTempHumid_ProcessEvent( uint8 task_id, uint16 events )
     Thermo_SetPreTemp(getPrecastTemp());
     Thermo_SetShowPreTemp(TRUE);
     
-    osal_start_timerEx(CMTechThermometer_TaskID, TH_STOP_SHOW_PRETEMP_EVT, THERMO_SHOW_PRETEMP);
+    osal_start_timerEx(tempHumid_TaskID, TH_STOP_SHOW_PRETEMP_EVT, THERMO_SHOW_PRETEMP);
   
     return (events ^ TH_DP_PRECAST_EVT);
   }  
@@ -400,7 +353,7 @@ uint16 CMTechTempHumid_ProcessEvent( uint8 task_id, uint16 events )
   {
     Thermo_ToneOn();
     
-    osal_start_timerEx(CMTechThermometer_TaskID, TH_TONE_OFF_EVT, 500 );
+    osal_start_timerEx(tempHumid_TaskID, TH_TONE_OFF_EVT, 500 );
   
     return (events ^ TH_TONE_ON_EVT);
   }   
@@ -411,7 +364,7 @@ uint16 CMTechTempHumid_ProcessEvent( uint8 task_id, uint16 events )
     
     if(--bzTimes > 0)
     {
-      osal_start_timerEx(CMTechThermometer_TaskID, TH_TONE_ON_EVT, 500 );
+      osal_start_timerEx(tempHumid_TaskID, TH_TONE_ON_EVT, 500 );
     }
   
     return (events ^ TH_TONE_OFF_EVT);
@@ -433,12 +386,12 @@ uint16 CMTechTempHumid_ProcessEvent( uint8 task_id, uint16 events )
  *
  * @return  none
  */
-static void CMTechThermometer_ProcessOSALMsg( osal_event_hdr_t *pMsg )
+static void tempHumid_ProcessOSALMsg( osal_event_hdr_t *pMsg )
 {
   switch ( pMsg->event )
   {
     case KEY_CHANGE:
-      CMTechThermometer_HandleKeys( ((keyChange_t *)pMsg)->state, ((keyChange_t *)pMsg)->keys );
+      tempHumid_HandleKeys( ((keyChange_t *)pMsg)->state, ((keyChange_t *)pMsg)->keys );
       break;
 
     default:
@@ -451,7 +404,7 @@ static void CMTechThermometer_ProcessOSALMsg( osal_event_hdr_t *pMsg )
 
 #if defined( CC2540_MINIDK )
 /*********************************************************************
- * @fn      CMTechThermometer_HandleKeys
+ * @fn      tempHumid_HandleKeys
  *
  * @brief   Handles all key events for this device.
  *
@@ -462,13 +415,13 @@ static void CMTechThermometer_ProcessOSALMsg( osal_event_hdr_t *pMsg )
  *
  * @return  none
  */
-static void CMTechThermometer_HandleKeys( uint8 shift, uint8 keys )
+static void tempHumid_HandleKeys( uint8 shift, uint8 keys )
 {
   VOID shift;  // Intentionally unreferenced parameter
 
   if ( keys & HAL_KEY_SW_1 )
   {
-    osal_set_event( CMTechThermometer_TaskID, TH_SWITCH_MODE_EVT);
+    osal_set_event( tempHumid_TaskID, TH_SWITCH_MODE_EVT);
 
   } 
 }
@@ -560,31 +513,31 @@ static void peripheralStateNotificationCB( gaprole_States_t newState )
 }
 
 
-static void thermometerServiceCB( uint8 paramID )
+static void tempHumidServiceCB( uint8 paramID )
 {
   uint8 newValue;
 
   switch (paramID)
   {
-    case THERMOMETER_CONF:
-      Thermometer_GetParameter( THERMOMETER_CONF, &newValue );
+    case TEMPHUMID_CONF:
+      TempHumid_GetParameter( TEMPHUMID_CONF, &newValue );
       
-      if ( newValue == THERMOMETER_CONF_STANDBY)  // 停止采集，进入待机模式
+      if ( newValue == TEMPHUMID_CONF_STANDBY)  // 停止采集，进入待机模式
       {
         switchFromActiveToStandby();
       }
       
-      else if ( newValue == THERMOMETER_CONF_CALIBRATION) // 进行标定
+      else if ( newValue == TEMPHUMID_CONF_CALIBRATION) // 进行标定
       {
-        osal_set_event( CMTechThermometer_TaskID, TH_CALIBRATION_EVT);
+        osal_set_event( tempHumid_TaskID, TH_CALIBRATION_EVT);
       }
       
-      else if ( newValue == THERMOMETER_CONF_LCDON) // 开LCD
+      else if ( newValue == TEMPHUMID_CONF_LCDON) // 开LCD
       {
         Thermo_TurnOn_LCD();
       }   
       
-      else if ( newValue == THERMOMETER_CONF_LCDOFF) // 关LCD
+      else if ( newValue == TEMPHUMID_CONF_LCDOFF) // 关LCD
       {
         Thermo_TurnOff_LCD();
       }  
@@ -596,8 +549,8 @@ static void thermometerServiceCB( uint8 paramID )
       
       break;
 
-    case THERMOMETER_PERI:
-      Thermometer_GetParameter( THERMOMETER_PERI, &newValue );
+    case TEMPHUMID_PERI:
+      TempHumid_GetParameter( TEMPHUMID_PERI, &newValue );
       transNumOfADPeriod = newValue;
       break;
 
@@ -614,22 +567,22 @@ static void initAsStandbyMode()
   curMode = MODE_STANDBY;
   
   // 采样周期为1秒
-  ADPeriod = THERMOMETER_TIME_UNIT;
+  ADPeriod = TEMPHUMID_TIME_UNIT;
   
   // 传输周期为采样周期的1倍
   transNumOfADPeriod = DEFAULT_TRANSMIT_PERIOD;  
   
   // 初始化蓝牙属性
   // 温度为0
-  uint8 thermoData[THERMOMETER_DATA_LEN] = { 0, 0 };
-  Thermometer_SetParameter( THERMOMETER_DATA, THERMOMETER_DATA_LEN, thermoData );
+  uint8 thermoData[TEMPHUMID_DATA_LEN] = { 0, 0 };
+  TempHumid_SetParameter( TEMPHUMID_DATA, TEMPHUMID_DATA_LEN, thermoData );
   
   // 停止采集
-  uint8 thermoCfg = THERMOMETER_CONF_STANDBY;
-  Thermometer_SetParameter( THERMOMETER_CONF, sizeof(uint8), &thermoCfg );  
+  uint8 thermoCfg = TEMPHUMID_CONF_STANDBY;
+  TempHumid_SetParameter( TEMPHUMID_CONF, sizeof(uint8), &thermoCfg );  
   
   // 设置传输周期
-  Thermometer_SetParameter( THERMOMETER_PERI, sizeof(uint8), &transNumOfADPeriod ); 
+  TempHumid_SetParameter( TEMPHUMID_PERI, sizeof(uint8), &transNumOfADPeriod ); 
   
   // 停止采样
   thermoADEnabled = FALSE;
@@ -647,17 +600,17 @@ static void switchFromStandbyToActive( void )
   GAPConfig_EnableAdv(TRUE);    
 
   // 获取输出值类型  
-  uint8 thermoCfg = Thermo_GetValueType();
-  Thermometer_SetParameter( THERMOMETER_CONF, sizeof(uint8), &thermoCfg ); 
+  uint8 thermoCfg = tempHumid_GetValueType();
+  TempHumid_SetParameter( TEMPHUMID_CONF, sizeof(uint8), &thermoCfg ); 
   
   // 显示上次最大值后，开始AD采样
   thermoADEnabled = TRUE;
-  osal_start_timerEx( CMTechThermometer_TaskID, TH_PERIODIC_EVT, THERMO_LASTMAXTEMP_SHOWTIME);
+  osal_start_timerEx( tempHumid_TaskID, TH_PERIODIC_EVT, THERMO_LASTMAXTEMP_SHOWTIME);
   
   // 重新计数
   haveSendNum = 0;
   
-  DP_Init(CMTechThermometer_TaskID);
+  DP_Init(tempHumid_TaskID);
 }
 
 
@@ -667,7 +620,7 @@ static void switchFromActiveToStandby( void )
   
   // 停止AD
   thermoADEnabled = FALSE;
-  osal_stop_timerEx( CMTechThermometer_TaskID, TH_PERIODIC_EVT);
+  osal_stop_timerEx( tempHumid_TaskID, TH_PERIODIC_EVT);
   
   // 终止蓝牙连接
   if ( gapProfileState == GAPROLE_CONNECTED )
@@ -704,12 +657,12 @@ static void readAndProcessThermoData()
   // 到了传输周期，就发送蓝牙数据属性值
   if(++haveSendNum >= transNumOfADPeriod)
   {
-    Thermometer_SetParameter( THERMOMETER_DATA, THERMOMETER_DATA_LEN, (uint8*)&value); 
+    TempHumid_SetParameter( TEMPHUMID_DATA, TEMPHUMID_DATA_LEN, (uint8*)&value); 
     haveSendNum = 0;
   }
 
   // 如果是温度数据，去处理它
-  if(Thermo_GetValueType() == THERMOMETER_CONF_VALUETYPE_T)
+  if(tempHumid_GetValueType() == TEMPHUMID_CONF_VALUETYPE_T)
   {
     DP_Process(value);
   }
@@ -719,7 +672,7 @@ static void readAndProcessThermoData()
 static void turnOnTone(uint8 times)
 {
   bzTimes = times;
-  osal_set_event(CMTechThermometer_TaskID, TH_TONE_ON_EVT);
+  osal_set_event(tempHumid_TaskID, TH_TONE_ON_EVT);
 }
 
 

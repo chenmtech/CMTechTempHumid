@@ -66,7 +66,7 @@ const pTaskEventHandlerFn tasksArr[] =
   GAPRole_ProcessEvent,                                             // task 8
   GAPBondMgr_ProcessEvent,                                          // task 9
   GATTServApp_ProcessEvent,                                         // task 10
-  CMTechTempHumid_ProcessEvent                                      // task 11, 本应用事件处理函数
+  TempHumid_ProcessEvent                                      // task 11, 本应用事件处理函数
 };
 
 const uint8 tasksCnt = sizeof( tasksArr ) / sizeof( tasksArr[0] );
@@ -126,7 +126,7 @@ void osalInitTasks( void )
   GATTServApp_Init( taskID++ );
 
   /* Application */
-  CMTechTempHumid_Init( taskID );
+  TempHumid_Init( taskID );
 }
 
 /*********************************************************************

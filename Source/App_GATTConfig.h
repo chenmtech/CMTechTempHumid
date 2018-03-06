@@ -9,7 +9,7 @@
 #include "Service_TempHumid.h"
 
 //≈‰÷√Height∑˛ŒÒ
-extern void GATTConfig_SetThermoService(thermometerServiceCBs_t* appCBs);
+extern void GATTConfig_SetThermoService(tempHumidServiceCBs_t* appCBs);
 
 
 

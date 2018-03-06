@@ -100,7 +100,7 @@ static uint8 idx = 0;
 static int16  caliValue = 0;    // 由于ADS1100的Offset Error引起测量误差，需要进行标定，这个是标定值
 
 // 数据类型
-static uint8 valueType = THERMOMETER_CONF_VALUETYPE_T;    
+static uint8 valueType = TEMPHUMID_CONF_VALUETYPE_T;    
 
 // 数据类型的下限
 static uint16 valueLowLimit = T_LOWLIMIT;
@@ -208,7 +208,7 @@ extern void Thermo_HardwareOn()
 }
 
 // 获取数据类型
-extern uint8 Thermo_GetValueType()
+extern uint8 tempHumid_GetValueType()
 {
   return valueType;
 }
@@ -220,15 +220,15 @@ extern void Thermo_SetValueType(uint8 type)
   
   switch(type)
   {
-  case THERMOMETER_CONF_VALUETYPE_AD:
+  case TEMPHUMID_CONF_VALUETYPE_AD:
     valueLowLimit = AD_LOWLIMIT;
     valueUpLimit = AD_UPLIMIT;
     break;
-  case THERMOMETER_CONF_VALUETYPE_R:
+  case TEMPHUMID_CONF_VALUETYPE_R:
     valueLowLimit = R_LOWLIMIT;
     valueUpLimit = R_UPLIMIT;
     break;
-  case THERMOMETER_CONF_VALUETYPE_T:
+  case TEMPHUMID_CONF_VALUETYPE_T:
     valueLowLimit = T_LOWLIMIT;
     valueUpLimit = T_UPLIMIT;
     break;
@@ -246,11 +246,11 @@ extern uint16 Thermo_GetValue()
 {
   switch(valueType)
   {
-  case THERMOMETER_CONF_VALUETYPE_AD:
+  case TEMPHUMID_CONF_VALUETYPE_AD:
     return getADValue();
-  case THERMOMETER_CONF_VALUETYPE_R:
+  case TEMPHUMID_CONF_VALUETYPE_R:
     return getResistor();
-  case THERMOMETER_CONF_VALUETYPE_T:
+  case TEMPHUMID_CONF_VALUETYPE_T:
     return getTemperature();
   }
   return FAILURE;
@@ -289,7 +289,7 @@ extern uint16 Thermo_UpdateMaxValue(uint16 value)
 extern void Thermo_ShowValueOnLCD(uint8 location, uint16 value)
 {
   // 如果要显示预测温度
-  if( isShowPreTemp && (valueType == THERMOMETER_CONF_VALUETYPE_T) )
+  if( isShowPreTemp && (valueType == TEMPHUMID_CONF_VALUETYPE_T) )
   {
     HT1621B_ShowTemperature(location, preTemp, TRUE);
     curValue = 32768;
@@ -314,7 +314,7 @@ extern void Thermo_ShowValueOnLCD(uint8 location, uint16 value)
   else
   {
     // 显示温度数据
-    if(valueType == THERMOMETER_CONF_VALUETYPE_T)
+    if(valueType == TEMPHUMID_CONF_VALUETYPE_T)
     {
       HT1621B_ShowTemperature(location, value, FALSE);
     }
@@ -417,20 +417,20 @@ static void readLastMaxValueFromNV()
   // 从NV读取上次数据类型
   uint8 rtn = osal_snv_read(BLE_NVID_VALUE_TYPE, sizeof(uint8), (uint8*)&valueType);
   if(rtn != SUCCESS)
-    valueType = THERMOMETER_CONF_VALUETYPE_T;    
+    valueType = TEMPHUMID_CONF_VALUETYPE_T;    
   
   // 设置数据类型的上下限
   switch(valueType)
   {
-  case THERMOMETER_CONF_VALUETYPE_AD:
+  case TEMPHUMID_CONF_VALUETYPE_AD:
     valueLowLimit = AD_LOWLIMIT;
     valueUpLimit = AD_UPLIMIT;
     break;
-  case THERMOMETER_CONF_VALUETYPE_R:
+  case TEMPHUMID_CONF_VALUETYPE_R:
     valueLowLimit = R_LOWLIMIT;
     valueUpLimit = R_UPLIMIT;
     break;
-  case THERMOMETER_CONF_VALUETYPE_T:
+  case TEMPHUMID_CONF_VALUETYPE_T:
     valueLowLimit = T_LOWLIMIT;
     valueUpLimit = T_UPLIMIT;
     break;

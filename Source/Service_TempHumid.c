@@ -15,22 +15,22 @@
 // 产生服务和特征的128位UUID
 CONST uint8 thermoServUUID[ATT_UUID_SIZE] =
 { 
-  CM_UUID(THERMOMETER_SERV_UUID)
+  CM_UUID(TEMPHUMID_SERV_UUID)
 };
 
 CONST uint8 thermoDataUUID[ATT_UUID_SIZE] =
 { 
-  CM_UUID(THERMOMETER_DATA_UUID)
+  CM_UUID(TEMPHUMID_DATA_UUID)
 };
 
 CONST uint8 thermoCfgUUID[ATT_UUID_SIZE] =
 { 
-  CM_UUID(THERMOMETER_CONF_UUID)
+  CM_UUID(TEMPHUMID_CONF_UUID)
 };
 
 CONST uint8 thermoPeriodUUID[ATT_UUID_SIZE] =
 { 
-  CM_UUID(THERMOMETER_PERI_UUID)
+  CM_UUID(TEMPHUMID_PERI_UUID)
 };
 
 
@@ -121,37 +121,28 @@ static gattAttribute_t thermoServAttrTbl[] =
       },
 };
 
-// 缓存应用层给的回调
-static thermometerServiceCBs_t *thermoService_AppCBs = NULL;
+// 保存应用层给的回调函数
+static tempHumidServiceCBs_t *tempHumidService_AppCBs = NULL;
 
 
-
-
-
-// 给协议层的回调
-static uint8 thermo_ReadAttrCB( uint16 connHandle, gattAttribute_t *pAttr, 
+// 服务给协议栈的回调函数
+static uint8 tempHumid_ReadAttrCB( uint16 connHandle, gattAttribute_t *pAttr, 
                             uint8 *pValue, uint8 *pLen, uint16 offset, uint8 maxLen );
-static bStatus_t thermo_WriteAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
+static bStatus_t tempHumid_WriteAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
                                  uint8 *pValue, uint8 len, uint16 offset );
 
-static void thermo_HandleConnStatusCB( uint16 connHandle, uint8 changeType );
+static void tempHumid_HandleConnStatusCB( uint16 connHandle, uint8 changeType );
 
-
-
-
-
+// 服务给协议栈的回调结构体实例
 CONST gattServiceCBs_t thermoServCBs =
 {
-  thermo_ReadAttrCB,      // Read callback function pointer
-  thermo_WriteAttrCB,     // Write callback function pointer
+  tempHumid_ReadAttrCB,      // Read callback function pointer
+  tempHumid_WriteAttrCB,     // Write callback function pointer
   NULL                       // Authorization callback function pointer
 };
 
 
-
-
-
-static uint8 thermo_ReadAttrCB( uint16 connHandle, gattAttribute_t *pAttr, 
+static uint8 tempHumid_ReadAttrCB( uint16 connHandle, gattAttribute_t *pAttr, 
                             uint8 *pValue, uint8 *pLen, uint16 offset, uint8 maxLen )
 {
   bStatus_t status = SUCCESS;
@@ -180,14 +171,14 @@ static uint8 thermo_ReadAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
   {
     // No need for "GATT_SERVICE_UUID" or "GATT_CLIENT_CHAR_CFG_UUID" cases;
     // gattserverapp handles those reads
-    case THERMOMETER_DATA_UUID:
+    case TEMPHUMID_DATA_UUID:
       // 读身高值的时候，启动测量
-      *pLen = THERMOMETER_DATA_LEN;
-      VOID osal_memcpy( pValue, pAttr->pValue, THERMOMETER_DATA_LEN );
+      *pLen = TEMPHUMID_DATA_LEN;
+      VOID osal_memcpy( pValue, pAttr->pValue, TEMPHUMID_DATA_LEN );
       break;
       
-    case THERMOMETER_CONF_UUID:
-    case THERMOMETER_PERI_UUID:
+    case TEMPHUMID_CONF_UUID:
+    case TEMPHUMID_PERI_UUID:
       *pLen = 1;
       pValue[0] = *pAttr->pValue;
       break;
@@ -202,7 +193,7 @@ static uint8 thermo_ReadAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
 }
 
 
-static bStatus_t thermo_WriteAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
+static bStatus_t tempHumid_WriteAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
                                  uint8 *pValue, uint8 len, uint16 offset )
 {
   bStatus_t status = SUCCESS;
@@ -223,11 +214,11 @@ static bStatus_t thermo_WriteAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
   
   switch ( uuid )
   {
-    case THERMOMETER_DATA_UUID:
+    case TEMPHUMID_DATA_UUID:
       // Should not get here
       break;
 
-    case THERMOMETER_CONF_UUID:
+    case TEMPHUMID_CONF_UUID:
       // Validate the value
       // Make sure it's not a blob oper
       if ( offset == 0 )
@@ -251,12 +242,12 @@ static bStatus_t thermo_WriteAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
 
         if( pAttr->pValue == &thermoCfg )
         {
-          notifyApp = THERMOMETER_CONF;
+          notifyApp = TEMPHUMID_CONF;
         }
       }
       break;
 
-    case THERMOMETER_PERI_UUID:
+    case TEMPHUMID_PERI_UUID:
       // Validate the value
       // Make sure it's not a blob oper
       if ( offset == 0 )
@@ -273,7 +264,7 @@ static bStatus_t thermo_WriteAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
       // Write the value
       if ( status == SUCCESS )
       {
-        if ( pValue[0] >= (THERMOMETER_MIN_PERIOD/THERMOMETER_TIME_UNIT) )
+        if ( pValue[0] >= (TEMPHUMID_MIN_PERIOD/TEMPHUMID_TIME_UNIT) )
         {
 
           uint8 *pCurValue = (uint8 *)pAttr->pValue;
@@ -281,7 +272,7 @@ static bStatus_t thermo_WriteAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
 
           if( pAttr->pValue == &thermoPeriod )
           {
-            notifyApp = THERMOMETER_PERI;
+            notifyApp = TEMPHUMID_PERI;
           }
         }
         else
@@ -303,15 +294,15 @@ static bStatus_t thermo_WriteAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
   }
 
   // If a charactersitic value changed then callback function to notify application of change
-  if ( (notifyApp != 0xFF ) && thermoService_AppCBs && thermoService_AppCBs->pfnThermometerServiceCB )
+  if ( (notifyApp != 0xFF ) && tempHumidService_AppCBs && tempHumidService_AppCBs->pfnTempHumidServiceCB )
   {
-    thermoService_AppCBs->pfnThermometerServiceCB( notifyApp );
+    tempHumidService_AppCBs->pfnTempHumidServiceCB( notifyApp );
   }  
   
   return status;
 }
 
-static void thermo_HandleConnStatusCB( uint16 connHandle, uint8 changeType )
+static void tempHumid_HandleConnStatusCB( uint16 connHandle, uint8 changeType )
 { 
   // Make sure this is not loopback connection
   if ( connHandle != LOOPBACK_CONNHANDLE )
@@ -336,7 +327,7 @@ static void thermo_HandleConnStatusCB( uint16 connHandle, uint8 changeType )
 // 下面是外部函数
 
 // 加载服务
-bStatus_t Thermometer_AddService( uint32 services )
+extern bStatus_t TempHumid_AddService( uint32 services )
 {
   uint8 status = SUCCESS;
 
@@ -344,9 +335,9 @@ bStatus_t Thermometer_AddService( uint32 services )
   GATTServApp_InitCharCfg( INVALID_CONNHANDLE, thermoDataConfig );
 
   // Register with Link DB to receive link status change callback
-  VOID linkDB_Register( thermo_HandleConnStatusCB );  
+  VOID linkDB_Register( tempHumid_HandleConnStatusCB );  
   
-  if ( services & THERMOMETER_SERVICE )
+  if ( services & TEMPHUMID_SERVICE )
   {
     // Register GATT attribute list and CBs with GATT Server App
     status = GATTServApp_RegisterService( thermoServAttrTbl, 
@@ -362,11 +353,11 @@ bStatus_t Thermometer_AddService( uint32 services )
 
 
 // 登记应用层给的回调
-bStatus_t Thermometer_RegisterAppCBs( thermometerServiceCBs_t *appCallbacks )
+extern bStatus_t TempHumid_RegisterAppCBs( tempHumidServiceCBs_t *appCallbacks )
 {
   if ( appCallbacks )
   {
-    thermoService_AppCBs = appCallbacks;
+    tempHumidService_AppCBs = appCallbacks;
     
     return ( SUCCESS );
   }
@@ -380,16 +371,16 @@ bStatus_t Thermometer_RegisterAppCBs( thermometerServiceCBs_t *appCallbacks )
 
 
 
-bStatus_t Thermometer_SetParameter( uint8 param, uint8 len, void *value )
+extern bStatus_t TempHumid_SetParameter( uint8 param, uint8 len, void *value )
 {
   bStatus_t ret = SUCCESS;
 
   switch ( param )
   {
-    case THERMOMETER_DATA:
-    if ( len == THERMOMETER_DATA_LEN )
+    case TEMPHUMID_DATA:
+    if ( len == TEMPHUMID_DATA_LEN )
     {
-      VOID osal_memcpy( thermoData, value, THERMOMETER_DATA_LEN );
+      VOID osal_memcpy( thermoData, value, TEMPHUMID_DATA_LEN );
       // See if Notification has been enabled
       GATTServApp_ProcessCharCfg( thermoDataConfig, thermoData, FALSE,
                                  thermoServAttrTbl, GATT_NUM_ATTRS( thermoServAttrTbl ),
@@ -401,7 +392,7 @@ bStatus_t Thermometer_SetParameter( uint8 param, uint8 len, void *value )
     }
     break;
 
-    case THERMOMETER_CONF:
+    case TEMPHUMID_CONF:
       if ( len == sizeof ( uint8 ) )
       {
         thermoCfg = *((uint8*)value);
@@ -412,7 +403,7 @@ bStatus_t Thermometer_SetParameter( uint8 param, uint8 len, void *value )
       }
       break;
 
-    case THERMOMETER_PERI:
+    case TEMPHUMID_PERI:
       if ( len == sizeof ( uint8 ) )
       {
         thermoPeriod = *((uint8*)value);
@@ -434,21 +425,21 @@ bStatus_t Thermometer_SetParameter( uint8 param, uint8 len, void *value )
 
 
 
-bStatus_t Thermometer_GetParameter( uint8 param, void *value )
+extern bStatus_t TempHumid_GetParameter( uint8 param, void *value )
 {
   bStatus_t ret = SUCCESS;
   
   switch ( param )
   {
-    case THERMOMETER_DATA:
-      VOID osal_memcpy( value, thermoData, THERMOMETER_DATA_LEN );
+    case TEMPHUMID_DATA:
+      VOID osal_memcpy( value, thermoData, TEMPHUMID_DATA_LEN );
       break;
 
-    case THERMOMETER_CONF:
+    case TEMPHUMID_CONF:
       *((uint8*)value) = thermoCfg;
       break;
 
-    case THERMOMETER_PERI:
+    case TEMPHUMID_PERI:
       *((uint8*)value) = thermoPeriod;
       break;
 

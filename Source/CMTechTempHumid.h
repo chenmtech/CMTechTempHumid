@@ -31,13 +31,13 @@ extern "C"
 #define TH_STOP_SHOW_PRETEMP_EVT              0x0100     // 停止显示预测温度值
 
 // 测量控制标记值
-#define THERMOMETER_CONF_STANDBY            0x00    //停止体温测量，进入待机模式
+#define TEMPHUMID_CONF_STANDBY            0x00    //停止体温测量，进入待机模式
 /////////////////////////////////////////////////////////////////////////////////////
 // 0x01,0x02,0x03分别表示采集的三种数据类型，在App_Thermometer.h中定义
 /////////////////////////////////////////////////////////////////////////////////////  
-#define THERMOMETER_CONF_CALIBRATION        0x04    // 进行标定  
-#define THERMOMETER_CONF_LCDON              0x05    // 开LCD
-#define THERMOMETER_CONF_LCDOFF             0x06    // 关LCD
+#define TEMPHUMID_CONF_CALIBRATION        0x04    // 进行标定  
+#define TEMPHUMID_CONF_LCDON              0x05    // 开LCD
+#define TEMPHUMID_CONF_LCDOFF             0x06    // 关LCD
 
 /*********************************************************************
  * MACROS
@@ -50,12 +50,12 @@ extern "C"
 /*
  * Task Initialization for the BLE Application
  */
-extern void CMTechTempHumid_Init( uint8 task_id );
+extern void TempHumid_Init( uint8 task_id );
 
 /*
  * Task Event Processor for the BLE Application
  */
-extern uint16 CMTechTempHumid_ProcessEvent( uint8 task_id, uint16 events );
+extern uint16 TempHumid_ProcessEvent( uint8 task_id, uint16 events );
 
 
 

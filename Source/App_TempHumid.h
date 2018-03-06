@@ -8,9 +8,9 @@
 #include "comdef.h"
 
 // 采集的三种数据类型
-#define THERMOMETER_CONF_VALUETYPE_AD    0x01    //设置数据类型为AD值
-#define THERMOMETER_CONF_VALUETYPE_R     0x02    //设置数据类型为电阻值
-#define THERMOMETER_CONF_VALUETYPE_T     0x03    //设置数据类型为温度值
+#define TEMPHUMID_CONF_VALUETYPE_AD    0x01    //设置数据类型为AD值
+#define TEMPHUMID_CONF_VALUETYPE_R     0x02    //设置数据类型为电阻值
+#define TEMPHUMID_CONF_VALUETYPE_T     0x03    //设置数据类型为温度值
 
 
 #define T_LOWLIMIT    3390    // 温度值下限
@@ -39,7 +39,7 @@ extern uint16 Thermo_GetValue();
 extern void Thermo_DoCalibration();
 
 // 获取数据类型
-extern uint8 Thermo_GetValueType();
+extern uint8 tempHumid_GetValueType();
 
 // 设置数据类型
 extern void Thermo_SetValueType(uint8 type);
