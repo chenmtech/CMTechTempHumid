@@ -6428,7 +6428,19 @@
       <name>$PROJ_DIR$\..\Source\Dev_LMT70.h</name>
     </file>
     <file>
+      <name>$PROJ_DIR$\..\Source\Dev_SI7021.cpp</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\Dev_SI7021.h</name>
+    </file>
+    <file>
       <name>$PROJ_DIR$\..\Source\OSAL_CMTechTempHumid.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\Service_RHAmbT.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\Service_RHAmbT.h</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\Source\Service_TempHumid.c</name>

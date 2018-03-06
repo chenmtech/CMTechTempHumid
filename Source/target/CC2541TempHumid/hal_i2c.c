@@ -138,21 +138,13 @@ static uint8 i2cMstStrt(uint8 RD_WRn)
  * ------------------------------------------------------------------------------------------------
  */
 
-/**************************************************************************************************
- * @fn          HalI2CInit
- *
- * @brief       初始化I2C主模式，包括设置时钟频率，并使能I2C
- *
- * input parameters
- *
- * @param       clockRate - I2C时钟频率
- *
- * output parameters
- *
- * None.
- *
- * @return      None.
- */
+/********************************************************************************************
+* 初始化I2C模块，设置I2C从机的地址，以及通信的时钟频率
+* 不是说开始初始化一次就可以
+* 而是，每次读取数据之前，都要调用此函数初始化
+* @param address : 设备地址，是指没有右移一位的地址，内部会右移一位
+* @param clockRate : I2C的时钟频率
+*/
 extern void HalI2CInit(uint8 address, i2cClock_t clockRate)
 {
   i2cAddr = address << 1;
@@ -167,16 +159,9 @@ extern void HalI2CInit(uint8 address, i2cClock_t clockRate)
  * @fn          HalI2CRead
  *
  * @brief       读指定长度的数据
- *
- * input parameters
- *
- * @param       address - 从机7位地址
+
  * @param       len - 读数据字节长度
  * @param       pBuf - 存储数据的缓冲区指针
- *
- * output parameters
- *
- * None.
  *
  * @return      成功读取的字节长度
  */
@@ -231,15 +216,10 @@ extern uint8 HalI2CRead(uint8 len, uint8 *pBuf)
  *
  * @brief       写一定长度的数据
  *
- * input parameters
- *
  * @param       address - 从机7位地址
  * @param       len - 写数据字节长度
  * @param       pBuf - 数据缓冲区指针
  *
- * output parameters
- *
- * None.
  *
  * @return      成功写入的数据字节长度
  */
@@ -276,11 +256,12 @@ extern uint8 HalI2CWrite(uint8 len, uint8 *pBuf)
   return len;
 }
 
+// 一定要把I2C的接口设为GPIO才能省电
 extern void HalI2CWrapperEnable()
 {
-  // I2C的SDA, SCL设置为GPIO, 输出低电平
-  I2CWC = 0x83;
-  I2CIO = 0x00;  
+  // I2C的SDA, SCL设置为GPIO
+  I2CWC = 0x83;   //GPIO,000,SCL pullup disable, SDA pullup disable, SCL output enable, SDA output enable
+  I2CIO = 0x00;   //000000, SCL Output register=0, SDA Output register=0
 }
 
 // 关闭I2C
