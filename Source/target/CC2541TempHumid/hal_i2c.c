@@ -264,7 +264,7 @@ extern void HalI2CWrapperEnable()
   I2CIO = 0x00;   //000000, SCL Output register=0, SDA Output register=0
 }
 
-// ¹Ø±ÕI2C
+// disable I2CÄ£¿é
 extern void HalI2CDisable(void)
 {
   I2C_DISABLE();
