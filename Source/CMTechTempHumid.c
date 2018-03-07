@@ -51,17 +51,14 @@
 */
 #define INVALID_CONNHANDLE                    0xFFFF
 
-// 停止状态
+// 停止采集状态
 #define STATUS_STOP           0     
 
-// 开始状态
+// 开始采集状态
 #define STATUS_START          1            
 
 // 缺省采样周期，1秒
 #define DEFAULT_PERIOD         1000
-
-/* 延时n毫秒 */
-#define ST_HAL_DELAY(n) st( { volatile uint32 i; for (i=0; i<(n); i++) { }; } )
 
 
 /*********************************************************************
@@ -101,8 +98,8 @@ static void tempHumidStart( void );
 // 停止采样
 static void tempHumidStop( void );
 
-// 读取并处理数据
-static void tempHumidReadAndProcessData();
+// 读取传输数据
+static void tempHumidReadAndTransferData();
 
 // 初始化IO管脚
 static void tempHumidInitIOPin();
@@ -136,7 +133,6 @@ static tempHumidServiceCBs_t tempHumid_ServCBs =
 /*********************************************************************
  * 公共函数
  */
-
 extern void TempHumid_Init( uint8 task_id )
 {
   tempHumid_TaskID = task_id;
@@ -144,6 +140,7 @@ extern void TempHumid_Init( uint8 task_id )
   // GAP 配置
   //配置广播参数
   GAPConfig_SetAdvParam(800, TEMPHUMID_SERV_UUID);
+  
   // 初始化立刻广播
   GAPConfig_EnableAdv(TRUE);
 
@@ -151,7 +148,7 @@ extern void TempHumid_Init( uint8 task_id )
   GAPConfig_SetConnParam(200, 200, 5, 10000, 1);
 
   //配置GGS，设置设备名
-  GAPConfig_SetGGSParam("Temp&Humid");
+  GAPConfig_SetGGSParam("TempHumid");
 
   //配置绑定参数
   GAPConfig_SetBondingParam(0, GAPBOND_PAIRING_MODE_WAIT_FOR_REQ);
@@ -181,7 +178,7 @@ extern void TempHumid_Init( uint8 task_id )
   HCI_EXT_ClkDivOnHaltCmd( HCI_EXT_ENABLE_CLK_DIVIDE_ON_HALT );  
 
   // 启动设备
-  osal_set_event( tempHumid_TaskID, TH_START_DEVICE_EVT );
+  osal_set_event( tempHumid_TaskID, TEMPHUMID_START_DEVICE_EVT );
 }
 
 
@@ -226,7 +223,7 @@ extern uint16 TempHumid_ProcessEvent( uint8 task_id, uint16 events )
     return (events ^ SYS_EVENT_MSG);
   }
 
-  if ( events & TH_START_DEVICE_EVT )
+  if ( events & TEMPHUMID_START_DEVICE_EVT )
   {    
     // Start the Device
     VOID GAPRole_StartDevice( &tempHumid_PeripheralCBs );
@@ -234,17 +231,17 @@ extern uint16 TempHumid_ProcessEvent( uint8 task_id, uint16 events )
     // Start Bond Manager
     VOID GAPBondMgr_Register( &tempHumid_BondMgrCBs );
 
-    return ( events ^ TH_START_DEVICE_EVT );
+    return ( events ^ TEMPHUMID_START_DEVICE_EVT );
   }
   
-  if ( events & TH_PERIODIC_EVT )
+  if ( events & TEMPHUMID_START_PERIODIC_EVT )
   {
-    tempHumidReadAndProcessData();
+    tempHumidReadAndTransferData();
 
     if(status == STATUS_START)
-      osal_start_timerEx( tempHumid_TaskID, TH_PERIODIC_EVT, period );
+      osal_start_timerEx( tempHumid_TaskID, TEMPHUMID_START_PERIODIC_EVT, period );
 
-    return (events ^ TH_PERIODIC_EVT);
+    return (events ^ TEMPHUMID_START_PERIODIC_EVT);
   }
 
   // Discard unknown events
@@ -323,6 +320,9 @@ static void peripheralStateNotificationCB( gaprole_States_t newState )
           
         // 断开连接时，停止AD采集
         tempHumidStop();
+        
+        // I2C的SDA, SCL设置为GPIO, 输出低电平，否则功耗很大
+        HalI2CSetAsGPIO();
       }
       break;
 
@@ -405,8 +405,8 @@ static void tempHumidInit()
   TempHumid_SetParameter( TEMPHUMID_CTRL, sizeof(uint8), &tempHumidCtrl );  
   
   // 设置传输周期
-  uint8 tmp = period/TEMPHUMID_PERIOD_UNIT;
-  TempHumid_SetParameter( TEMPHUMID_PERI, sizeof(uint8), (uint8*)&(tmp) ); 
+  uint8 tmp = DEFAULT_PERIOD/TEMPHUMID_PERIOD_UNIT;
+  TempHumid_SetParameter( TEMPHUMID_PERI, sizeof(uint8), (uint8*)&tmp ); 
 }
 
 // 启动采样
@@ -414,8 +414,7 @@ static void tempHumidStart( void )
 {  
   if(status == STATUS_STOP) {
     status = STATUS_START;
-
-    osal_start_timerEx( tempHumid_TaskID, TH_PERIODIC_EVT, period);
+    osal_start_timerEx( tempHumid_TaskID, TEMPHUMID_START_PERIODIC_EVT, period);
   }
 }
 
@@ -425,16 +424,16 @@ static void tempHumidStop( void )
   status = STATUS_STOP;
 }
 
-// 读数据
-static void tempHumidReadAndProcessData()
+// 读取传输数据
+static void tempHumidReadAndTransferData()
 {
   SI7021_HumiAndTemp humidTemp = SI7021_Measure();
   uint8 data[TEMPHUMID_DATA_LEN] = {0};
-  uint8* pt = (uint8*)(&(humidTemp.Humidity));
-  for(int i = 0; i < sizeof(long); i++) 
+  uint8* pt = (uint8*)(&(humidTemp.humid));
+  for(int i = 0; i < sizeof(float); i++) 
     data[i] = *pt++;
-  pt = (uint8*)(&(humidTemp.Temperature));
-  for(int i = 0; i < sizeof(long); i++) 
+  pt = (uint8*)(&(humidTemp.temp));
+  for(int i = 0; i < sizeof(float); i++) 
     data[i+4] = *pt++;
   TempHumid_SetParameter( TEMPHUMID_DATA, TEMPHUMID_DATA_LEN, (uint8*)data); 
 }

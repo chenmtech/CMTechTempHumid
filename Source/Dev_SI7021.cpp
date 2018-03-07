@@ -57,7 +57,7 @@ static void SI7021_Stop()
 */
 
 //测量湿度值
-extern long SI7021_MeasureHumidity()
+extern float SI7021_MeasureHumidity()
 {
   SI7021_Start();
   
@@ -74,11 +74,11 @@ extern long SI7021_MeasureHumidity()
     value = 0;
   else if(value > 100000)
     value = 100000;
-  return value;
+  return (float)value/1000.0;
 }
 
 //测湿度之后读温度
-extern long SI7021_ReadTemperature()
+extern float SI7021_ReadTemperature()
 {
   SI7021_Start();
   
@@ -90,11 +90,11 @@ extern long SI7021_ReadTemperature()
   
   long value = ( (((long)data[0] << 8) + data[1]) & ~3 );    
   value = ((value*21965)>>13)-46850;  
-  return value;
+  return (float)value/1000.0;
 }
 
 //测温度
-extern long SI7021_MeasureTemperature()
+extern float SI7021_MeasureTemperature()
 {
   SI7021_Start();
   
@@ -106,15 +106,15 @@ extern long SI7021_MeasureTemperature()
   
   long value = ( (((long)data[0] << 8) + data[1]) & ~3 );    
   value = ((value*21965)>>13)-46850;  
-  return value;  
+  return (float)value/1000.0;  
 }
 
 //同时测湿度和温度
 extern SI7021_HumiAndTemp SI7021_Measure()
 {
   SI7021_HumiAndTemp rtn;
-  rtn.Humidity = SI7021_MeasureHumidity();
-  rtn.Temperature = SI7021_ReadTemperature();
+  rtn.humid = SI7021_MeasureHumidity();
+  rtn.temp = SI7021_ReadTemperature();
   return rtn;
 }
 

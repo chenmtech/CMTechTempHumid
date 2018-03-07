@@ -1,27 +1,19 @@
 /**************************************************************************************************
-* CMTechTempHumid.h : 应用主头文件
+* CMTechTempHumid.h : 主应用头文件
 **************************************************************************************************/
 
 #ifndef CMTECHTEMPHUMID_H
 #define CMTECHTEMPHUMID_H
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
 
 /*********************************************************************
- * INCLUDES
- */
-
-/*********************************************************************
- * CONSTANTS
+ * 常量
  */
 
 
-// CMTech Thermometer Task Events
-#define TH_START_DEVICE_EVT                   0x0001     // 启动设备事件
-#define TH_PERIODIC_EVT                       0x0002     // 周期采集温湿度事件
+// 温湿度任务事件
+#define TEMPHUMID_START_DEVICE_EVT                   0x0001     // 设备启动事件
+#define TEMPHUMID_START_PERIODIC_EVT                 0x0002     // 周期采集启动事件
 
 // 测量控制标记值
 #define TEMPHUMID_CTRL_STOP               0x00    // 停止测量
@@ -50,8 +42,5 @@ extern uint16 TempHumid_ProcessEvent( uint8 task_id, uint16 events );
 /*********************************************************************
 *********************************************************************/
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif 

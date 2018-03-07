@@ -21,7 +21,7 @@
 
 
 // 温湿度值的字节长度
-#define TEMPHUMID_DATA_LEN             8       // 两个long的长度
+#define TEMPHUMID_DATA_LEN             8       // 两个float的长度
 
 #define TEMPHUMID_PERIOD_MIN_V         5       //最小采样周期为500ms
 
