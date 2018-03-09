@@ -70,6 +70,9 @@ static uint8 tempHumid_TaskID;
 // GAP状态
 static gaprole_States_t gapProfileState = GAPROLE_INIT;
 
+// GAP GATT 设备名
+static uint8 attDeviceName[GAP_DEVICE_NAME_LEN] = "TempHumid";
+
 // 当前状态
 static uint8 status = STATUS_STOP;
 
@@ -148,7 +151,7 @@ extern void TempHumid_Init( uint8 task_id )
   GAPConfig_SetConnParam(200, 200, 5, 10000, 1);
 
   //配置GGS，设置设备名
-  GAPConfig_SetGGSParam("TempHumid");
+  GAPConfig_SetGGSParam(attDeviceName);
 
   //配置绑定参数
   GAPConfig_SetBondingParam(0, GAPBOND_PAIRING_MODE_WAIT_FOR_REQ);
