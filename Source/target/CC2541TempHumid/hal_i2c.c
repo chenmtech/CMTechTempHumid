@@ -260,8 +260,8 @@ extern uint8 HalI2CWrite(uint8 len, uint8 *pBuf)
 extern void HalI2CSetAsGPIO()
 {
   // I2C的SDA, SCL设置为GPIO
-  I2CWC = 0x83;   //GPIO,000,SCL pullup disable, SDA pullup disable, SCL output enable, SDA output enable
-  I2CIO = 0x00;   //000000, SCL Output register=0, SDA Output register=0
+  I2CWC = 0x8C;   //GPIO,000,SCL pullup Eable, SDA pullup Eable, SCL output disable, SDA output disable
+  I2CIO = 0x03;   //000000, SCL Output register=1, SDA Output register=1
 }
 
 // disable I2C模块
