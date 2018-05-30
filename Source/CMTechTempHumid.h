@@ -14,6 +14,7 @@
 // 温湿度任务事件
 #define TEMPHUMID_START_DEVICE_EVT                   0x0001     // 设备启动事件
 #define TEMPHUMID_START_PERIODIC_EVT                 0x0002     // 周期采集启动事件
+#define TEMPHUMID_START_DAILY_EVT                    0x0003     // 启动日常采集事件
 
 // 测量控制标记值
 #define TEMPHUMID_CTRL_STOP               0x00    // 停止测量

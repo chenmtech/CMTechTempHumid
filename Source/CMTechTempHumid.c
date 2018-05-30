@@ -104,6 +104,9 @@ static void tempHumidStop( void );
 // 读取传输数据
 static void tempHumidReadAndTransferData();
 
+// 读取并保存每半小时的数据
+static void tempHumidReadAndStoreData();
+
 // 初始化IO管脚
 static void tempHumidInitIOPin();
 
@@ -139,6 +142,9 @@ static tempHumidServiceCBs_t tempHumid_ServCBs =
 extern void TempHumid_Init( uint8 task_id )
 {
   tempHumid_TaskID = task_id;
+  
+  //设置发射功率为4dB(可惜CC2541不支持4dB)
+  //HCI_EXT_SetTxPowerCmd (HCI_EXT_TX_POWER_4_DBM);  
 
   // GAP 配置
   //配置广播参数
@@ -148,7 +154,7 @@ extern void TempHumid_Init( uint8 task_id )
   GAPConfig_EnableAdv(TRUE);
 
   //配置连接参数
-  GAPConfig_SetConnParam(200, 200, 5, 10000, 1);
+  GAPConfig_SetConnParam(100, 100, 1, 2000, 1);
 
   //配置GGS，设置设备名
   GAPConfig_SetGGSParam(attDeviceName);
@@ -246,6 +252,16 @@ extern uint16 TempHumid_ProcessEvent( uint8 task_id, uint16 events )
 
     return (events ^ TEMPHUMID_START_PERIODIC_EVT);
   }
+  
+  if ( events & TEMPHUMID_START_DAILY_EVT )
+  {
+    tempHumidReadAndStoreData();
+
+    osal_start_timerEx( tempHumid_TaskID, TEMPHUMID_START_DAILY_EVT, 1800000L );
+
+    return (events ^ TEMPHUMID_START_DAILY_EVT);
+  }  
+  
 
   // Discard unknown events
   return 0;
@@ -312,7 +328,8 @@ static void peripheralStateNotificationCB( gaprole_States_t newState )
       break;
 
     case GAPROLE_CONNECTED:
-
+      tempHumidInit();  
+      
       break;
 
     case GAPROLE_WAITING:
@@ -326,6 +343,7 @@ static void peripheralStateNotificationCB( gaprole_States_t newState )
         
         // I2C的SDA, SCL设置为GPIO, 输出低电平，否则功耗很大
         HalI2CSetAsGPIO();
+
       }
       break;
 
@@ -439,6 +457,22 @@ static void tempHumidReadAndTransferData()
   for(int i = 0; i < sizeof(float); i++) 
     data[i+4] = *pt++;
   TempHumid_SetParameter( TEMPHUMID_DATA, TEMPHUMID_DATA_LEN, (uint8*)data); 
+}
+
+// 读取并保存每半小时的数据
+static void tempHumidReadAndStoreData()
+{
+  SI7021_HumiAndTemp humidTemp = SI7021_Measure();
+  uint8 data[TEMPHUMID_DATA_LEN] = {0};
+  uint8* pt = (uint8*)(&(humidTemp.humid));
+  for(int i = 0; i < sizeof(float); i++) 
+    data[i] = *pt++;
+  pt = (uint8*)(&(humidTemp.temp));
+  for(int i = 0; i < sizeof(float); i++) 
+    data[i+4] = *pt++;
+  
+  //加入保存数据的代码
+  
 }
 
 
