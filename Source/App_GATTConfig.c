@@ -16,3 +16,12 @@ extern void GATTConfig_SetTempHumidService(tempHumidServiceCBs_t* appCBs)
   // 登记回调
   VOID TempHumid_RegisterAppCBs( appCBs );  
 }
+
+//配置Timer服务
+extern void GATTConfig_SetTimerService(timerServiceCBs_t* appCBs)
+{
+  Timer_AddService( GATT_ALL_SERVICES );  // 加载服务  
+
+  // 登记回调
+  VOID Timer_RegisterAppCBs( appCBs );   
+}

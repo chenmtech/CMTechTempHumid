@@ -8,11 +8,14 @@
 
 #include "Service_TempHumid.h"
 
-//配置Height服务
+#include "Service_Timer.h"
+
+//配置TempHumid服务
 extern void GATTConfig_SetTempHumidService(tempHumidServiceCBs_t* appCBs);
 
 
-
+//配置Timer服务
+extern void GATTConfig_SetTimerService(timerServiceCBs_t* appCBs);
 
 
 

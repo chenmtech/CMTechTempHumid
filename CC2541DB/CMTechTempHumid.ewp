@@ -6397,6 +6397,12 @@
       <name>$PROJ_DIR$\..\Source\Dev_Si7021.h</name>
     </file>
     <file>
+      <name>$PROJ_DIR$\..\Source\hal_queue.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\hal_queue.h</name>
+    </file>
+    <file>
       <name>$PROJ_DIR$\..\Source\OSAL_CMTechTempHumid.c</name>
     </file>
     <file>
@@ -6404,6 +6410,12 @@
     </file>
     <file>
       <name>$PROJ_DIR$\..\Source\Service_TempHumid.h</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\Service_Timer.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\Service_Timer.h</name>
     </file>
   </group>
   <group>

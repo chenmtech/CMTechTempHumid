@@ -22,6 +22,8 @@
 #include "devinfoservice.h"
 #include "Service_TempHumid.h"
 
+#include "Service_Timer.h"
+
 #if defined ( PLUS_BROADCASTER )
   #include "peripheralBroadcaster.h"
 #else
@@ -39,6 +41,8 @@
 #include "Dev_Si7021.h"
 
 #include "CMTechTempHumid.h"
+
+
 
 #if defined FEATURE_OAD
   #include "oad.h"
@@ -79,6 +83,8 @@ static uint8 status = STATUS_STOP;
 // 数据采样周期，单位：ms
 static uint16 period = DEFAULT_PERIOD;
 
+// 定时周期，单位：ms
+static uint32 timerPeriod = 600000L;
 
 /*********************************************************************
  * 局部函数
@@ -91,6 +97,15 @@ static void peripheralStateNotificationCB( gaprole_States_t newState );
 
 // 温湿度服务回调函数
 static void tempHumidServiceCB( uint8 paramID );
+
+// 定时服务回调函数
+static void timerServiceCB( uint8 paramID );
+
+// 启动定时
+static void timerStart( void );
+
+// 停止定时
+static void timerStop( void );
 
 // 初始化
 static void tempHumidInit();
@@ -135,6 +150,12 @@ static tempHumidServiceCBs_t tempHumid_ServCBs =
   tempHumidServiceCB    // 温湿度服务回调函数实例，函数是Serice_TempHumid中声明的
 };
 
+// 定时服务回调结构体实例，结构体是Serice_Timer中声明的
+static timerServiceCBs_t timer_ServCBs =
+{
+  timerServiceCB    // 定时服务回调函数实例，函数是Serice_Timer中声明的
+};
+
 
 /*********************************************************************
  * 公共函数
@@ -170,6 +191,8 @@ extern void TempHumid_Init( uint8 task_id )
 #if defined FEATURE_OAD
   VOID OADTarget_AddService();                    // OAD Profile
 #endif
+  
+  GATTConfig_SetTimerService(&timer_ServCBs);
   
   GATTConfig_SetTempHumidService(&tempHumid_ServCBs);
 
@@ -253,13 +276,26 @@ extern uint16 TempHumid_ProcessEvent( uint8 task_id, uint16 events )
     return (events ^ TEMPHUMID_START_PERIODIC_EVT);
   }
   
-  if ( events & TEMPHUMID_START_DAILY_EVT )
+  if ( events & TEMPHUMID_START_TIMER_EVT )
   {
-    tempHumidReadAndStoreData();
+    uint8 time[2] = {0};
+    Timer_GetParameter(TIMER_CURTIME, time);
+    uint8 minPeriod = 0;
+    Timer_GetParameter(TIMER_PERIOD, &minPeriod);
+    time[1] += minPeriod;
+    if(time[1] >= 60) {
+      time[1] -= 60;
+      time[0]++;
+      if(time[0] == 24) {
+        time[0] = 0;
+      }
+    }
+    
+    Timer_SetParameter(TIMER_CURTIME, 2, time);
 
-    osal_start_timerEx( tempHumid_TaskID, TEMPHUMID_START_DAILY_EVT, 1800000L );
+    osal_start_timerEx( tempHumid_TaskID, TEMPHUMID_START_TIMER_EVT, timerPeriod );
 
-    return (events ^ TEMPHUMID_START_DAILY_EVT);
+    return (events ^ TEMPHUMID_START_TIMER_EVT);
   }  
   
 
@@ -410,6 +446,52 @@ static void tempHumidServiceCB( uint8 paramID )
       // Should not get here
       break;
   }
+}
+
+static void timerServiceCB( uint8 paramID )
+{
+  uint8 newValue;
+
+  switch (paramID)
+  {
+    case TIMER_CTRL:
+      Timer_GetParameter( TIMER_CTRL, &newValue );
+      
+      // 停止定时
+      if ( newValue == TIMER_CTRL_STOP)  
+      {
+        timerStop();
+      }
+      // 开始定时
+      else if ( newValue == TIMER_CTRL_START) 
+      {
+        timerStart();
+      }
+      
+      break;
+
+    case TIMER_PERIOD:
+      Timer_GetParameter( TIMER_PERIOD, &newValue );
+      timerPeriod = newValue*60000L;
+
+      break;
+
+    default:
+      // Should not get here
+      break;
+  }
+}
+
+// 启动定时
+static void timerStart( void )
+{  
+  osal_start_reload_timer( tempHumid_TaskID, TEMPHUMID_START_TIMER_EVT, timerPeriod );
+}
+
+// 停止定时
+static void timerStop( void )
+{  
+  osal_stop_timerEx( tempHumid_TaskID, TEMPHUMID_START_TIMER_EVT);
 }
 
 
