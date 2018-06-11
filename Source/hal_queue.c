@@ -29,7 +29,7 @@ extern void Queue_Push(uint8* pData)
   }  
 }
 
-extern void Queue_Pop(uint8* pData)
+extern bool Queue_Pop(uint8* pData)
 {
   //
   if(idx_send != idx_push)
@@ -37,7 +37,18 @@ extern void Queue_Pop(uint8* pData)
     VOID osal_memcpy(pData, &buf[idx_send], QUEUE_UNIT_L);
     idx_send += QUEUE_UNIT_L;
     if(idx_send == length) idx_send = 0;
-  }else {
-    pData = NULL;
+    return true;
   }
+  return false;
+}
+
+extern bool Queue_GetDataAtTime(uint8* pData, uint8* pTime)
+{
+  for(int i = 0; i < length; i+=10) {
+    if(buf[i] == pTime[0] && buf[i+1] == pTime[1]) {
+      VOID osal_memcpy(pData, &buf[i+2], 8);
+      return true;
+    }
+  }
+  return false;
 }

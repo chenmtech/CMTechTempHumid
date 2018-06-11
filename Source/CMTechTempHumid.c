@@ -24,6 +24,8 @@
 
 #include "Service_Timer.h"
 
+#include "hal_queue.h"
+
 #if defined ( PLUS_BROADCASTER )
   #include "peripheralBroadcaster.h"
 #else
@@ -83,8 +85,8 @@ static uint8 status = STATUS_STOP;
 // 数据采样周期，单位：ms
 static uint16 period = DEFAULT_PERIOD;
 
-// 定时周期，单位：ms
-static uint32 timerPeriod = 600000L;
+// 定时周期，单位：分钟
+static uint8 minPeriod = 10;
 
 /*********************************************************************
  * 局部函数
@@ -280,8 +282,8 @@ extern uint16 TempHumid_ProcessEvent( uint8 task_id, uint16 events )
   {
     uint8 time[2] = {0};
     Timer_GetParameter(TIMER_CURTIME, time);
-    uint8 minPeriod = 0;
-    Timer_GetParameter(TIMER_PERIOD, &minPeriod);
+    //uint8 minPeriod = 0;
+    //Timer_GetParameter(TIMER_PERIOD, &minPeriod);
     time[1] += minPeriod;
     if(time[1] >= 60) {
       time[1] -= 60;
@@ -293,7 +295,9 @@ extern uint16 TempHumid_ProcessEvent( uint8 task_id, uint16 events )
     
     Timer_SetParameter(TIMER_CURTIME, 2, time);
 
-    osal_start_timerEx( tempHumid_TaskID, TEMPHUMID_START_TIMER_EVT, timerPeriod );
+    osal_start_timerEx( tempHumid_TaskID, TEMPHUMID_START_TIMER_EVT, minPeriod*60000L );
+    
+    tempHumidReadAndStoreData();
 
     return (events ^ TEMPHUMID_START_TIMER_EVT);
   }  
@@ -472,7 +476,7 @@ static void timerServiceCB( uint8 paramID )
 
     case TIMER_PERIOD:
       Timer_GetParameter( TIMER_PERIOD, &newValue );
-      timerPeriod = newValue*60000L;
+      minPeriod = newValue;
 
       break;
 
@@ -485,7 +489,16 @@ static void timerServiceCB( uint8 paramID )
 // 启动定时
 static void timerStart( void )
 {  
-  osal_start_reload_timer( tempHumid_TaskID, TEMPHUMID_START_TIMER_EVT, timerPeriod );
+  uint8 time[2] = {0};
+  Timer_GetParameter(TIMER_CURTIME, time);
+  //uint8 minPeriod = 0;
+  //Timer_GetParameter(TIMER_PERIOD, &minPeriod);
+  uint8 tmp = time[1]%minPeriod;
+  time[1] -= tmp;
+  Timer_SetParameter(TIMER_CURTIME, 2, time);
+  
+  Queue_Init();
+  osal_start_reload_timer( tempHumid_TaskID, TEMPHUMID_START_TIMER_EVT, (minPeriod-tmp)*60000L );
 }
 
 // 停止定时
@@ -541,20 +554,26 @@ static void tempHumidReadAndTransferData()
   TempHumid_SetParameter( TEMPHUMID_DATA, TEMPHUMID_DATA_LEN, (uint8*)data); 
 }
 
-// 读取并保存每半小时的数据
+// 读取并保存当前温湿度数据
 static void tempHumidReadAndStoreData()
 {
+  uint8 time[2] = {0};
+  Timer_GetParameter(TIMER_CURTIME, time);
+  
   SI7021_HumiAndTemp humidTemp = SI7021_Measure();
-  uint8 data[TEMPHUMID_DATA_LEN] = {0};
+  uint8 data[10] = {0};
+  data[0] = time[0];
+  data[1] = time[1];
+  
   uint8* pt = (uint8*)(&(humidTemp.humid));
   for(int i = 0; i < sizeof(float); i++) 
-    data[i] = *pt++;
+    data[i+2] = *pt++;
   pt = (uint8*)(&(humidTemp.temp));
   for(int i = 0; i < sizeof(float); i++) 
-    data[i+4] = *pt++;
+    data[i+6] = *pt++;
   
   //加入保存数据的代码
-  
+  Queue_Push(data);
 }
 
 

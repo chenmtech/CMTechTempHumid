@@ -14,6 +14,8 @@
 #define TEMPHUMID_DATA_UUID    0xAA61     // 温湿度数据UUID
 #define TEMPHUMID_CTRL_UUID    0xAA62     // 测量控制UUID
 #define TEMPHUMID_PERI_UUID    0xAA63     // 测量周期
+#define TEMPHUMID_HISTORY_TIME_UUID       0xAA64      // 准备读取数据的历史时间
+#define TEMPHUMID_HISTORY_DATA_UUID       0xAA65      // 历史时间的温湿度数据
 
 
 // 服务的bit field
