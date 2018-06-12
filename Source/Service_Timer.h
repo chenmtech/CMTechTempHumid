@@ -1,3 +1,8 @@
+/**
+* 计时服务：提供一定精度的计时服务
+* 计时精度不会很高，单位：分钟
+*/
+
 #ifndef SERVICE_TIMER_H
 #define SERVICE_TIMER_H
 
@@ -12,7 +17,7 @@
 #define TIMER_SERV_UUID               0xAA70     // 定时服务UUID
 #define TIMER_CURTIME_UUID            0xAA71     // 当前时间UUID
 #define TIMER_CTRL_UUID               0xAA72     // 定时控制UUID
-#define TIMER_PERIOD_UUID             0xAA73     // 定时周期
+#define TIMER_PERIOD_UUID             0xAA73     // 定时周期UUID，相当于计时精度
 
 
 // 服务的bit field

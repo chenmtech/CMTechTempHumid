@@ -1,21 +1,28 @@
+/**
+* 环境温湿度服务：提供实时温湿度测量，并保存过去24小时历史测量数据
+*/
 
 #ifndef SERVICE_TEMPHUMID_H
 #define SERVICE_TEMPHUMID_H
 
 
 // 特征标记位
-#define TEMPHUMID_DATA       0       //温湿度数据
-#define TEMPHUMID_CTRL       1       //测量控制
-#define TEMPHUMID_PERI       2       //测量周期
+#define TEMPHUMID_DATA          0       //实时温湿度数据
+#define TEMPHUMID_CTRL          1       //实时测量控制
+#define TEMPHUMID_PERI          2       //实时测量周期
+#define TEMPHUMID_HISTORYTIME   3       //历史测量数据的时间点
+#define TEMPHUMID_HISTORYDATA   4       //历史测量数据
 
 
 // 服务和特征的16位UUID
-#define TEMPHUMID_SERV_UUID    0xAA60     // 温湿度服务UUID
-#define TEMPHUMID_DATA_UUID    0xAA61     // 温湿度数据UUID
-#define TEMPHUMID_CTRL_UUID    0xAA62     // 测量控制UUID
-#define TEMPHUMID_PERI_UUID    0xAA63     // 测量周期
-#define TEMPHUMID_HISTORY_TIME_UUID       0xAA64      // 准备读取数据的历史时间
-#define TEMPHUMID_HISTORY_DATA_UUID       0xAA65      // 历史时间的温湿度数据
+#define TEMPHUMID_SERV_UUID               0xAA60     // 温湿度服务UUID
+#define TEMPHUMID_DATA_UUID               0xAA61     // 实时温湿度数据UUID
+#define TEMPHUMID_CTRL_UUID               0xAA62     // 实时测量控制UUID
+#define TEMPHUMID_PERI_UUID               0xAA63     // 实时测量周期UUID
+
+/*历史数据的测量周期依赖计时服务中的定时周期，由定时周期控制*/
+#define TEMPHUMID_HISTORY_TIME_UUID       0xAA64      // 历史测量数据的时间UUID
+#define TEMPHUMID_HISTORY_DATA_UUID       0xAA65      // 历史测量数据UUID
 
 
 // 服务的bit field

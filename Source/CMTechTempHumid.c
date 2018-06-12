@@ -63,8 +63,8 @@
 // 开始采集状态
 #define STATUS_START          1            
 
-// 缺省采样周期，1秒
-#define DEFAULT_PERIOD         1000
+// 缺省采样周期，5秒
+#define DEFAULT_PERIOD         5000
 
 
 /*********************************************************************
@@ -194,9 +194,10 @@ extern void TempHumid_Init( uint8 task_id )
   VOID OADTarget_AddService();                    // OAD Profile
 #endif
   
-  GATTConfig_SetTimerService(&timer_ServCBs);
+  GATTConfig_SetTempHumidService(&tempHumid_ServCBs);  
   
-  GATTConfig_SetTempHumidService(&tempHumid_ServCBs);
+  GATTConfig_SetTimerService(&timer_ServCBs);  
+
 
   //在这里初始化GPIO
   //第一：所有管脚，reset后的状态都是输入加上拉
@@ -421,6 +422,9 @@ static void peripheralStateNotificationCB( gaprole_States_t newState )
 static void tempHumidServiceCB( uint8 paramID )
 {
   uint8 newValue;
+  uint8 time[2] = {0};
+  uint8 data[8] = {-1};
+  float tmp = -1.0;
 
   switch (paramID)
   {
@@ -445,7 +449,15 @@ static void tempHumidServiceCB( uint8 paramID )
       period = newValue*TEMPHUMID_PERIOD_UNIT;
 
       break;
-
+      
+    case TEMPHUMID_HISTORYTIME:
+      TempHumid_GetParameter(TEMPHUMID_HISTORYTIME, time);
+      osal_memcpy(data, (uint8*)&tmp, sizeof(float));
+      osal_memcpy(data+4, (uint8*)&tmp, sizeof(float));
+      Queue_GetDataAtTime(data, time);
+      TempHumid_SetParameter(TEMPHUMID_HISTORYDATA, 8, data);
+    
+      break;
     default:
       // Should not get here
       break;
@@ -560,6 +572,9 @@ static void tempHumidReadAndStoreData()
   uint8 time[2] = {0};
   Timer_GetParameter(TIMER_CURTIME, time);
   
+  // 前两次不稳定，获取第三次数据
+  SI7021_Measure();
+  SI7021_Measure();
   SI7021_HumiAndTemp humidTemp = SI7021_Measure();
   uint8 data[10] = {0};
   data[0] = time[0];

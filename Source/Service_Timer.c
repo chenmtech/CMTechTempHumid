@@ -52,15 +52,15 @@ CONST uint8 timerPeriodUUID[ATT_UUID_SIZE] =
 // 服务属性值
 static CONST gattAttrType_t timerService = { ATT_UUID_SIZE, timerServUUID };
 
-// 当前时间的相关属性
+// 当前时间的相关属性：可读可写
 static uint8 timerCurTimeProps = GATT_PROP_READ | GATT_PROP_WRITE;
 static uint8 timerCurTime[2] = {0};
 
-// 定时控制点的相关属性
+// 定时控制点的相关属性：可读可写
 static uint8 timerCtrlProps = GATT_PROP_READ | GATT_PROP_WRITE;
 static uint8 timerCtrl = 0;
 
-// 定时周期的相关属性
+// 定时周期的相关属性：可读可写，单位：分钟
 static uint8 timerPeriodProps = GATT_PROP_READ | GATT_PROP_WRITE;
 static uint8 timerPeriod = 10;    
 
@@ -68,7 +68,7 @@ static uint8 timerPeriod = 10;
 // 服务的属性表
 static gattAttribute_t timerServAttrTbl[] = 
 {
-  // timer 服务
+  // 计时服务
   { 
     { ATT_BT_UUID_SIZE, primaryServiceUUID }, /* type */
     GATT_PERMIT_READ,                         /* permissions */
@@ -84,7 +84,7 @@ static gattAttribute_t timerServAttrTbl[] =
       &timerCurTimeProps 
     },
 
-      // current time Characteristic Value
+      // 当前时间特征值
       { 
         { ATT_UUID_SIZE, timerCurTimeUUID },
         GATT_PERMIT_READ | GATT_PERMIT_WRITE, 
@@ -93,7 +93,7 @@ static gattAttribute_t timerServAttrTbl[] =
       }, 
 
       
-    // 测量控制点特征声明
+    // 计时控制点特征声明
     {
       { ATT_BT_UUID_SIZE, characterUUID },
       GATT_PERMIT_READ,
@@ -101,7 +101,7 @@ static gattAttribute_t timerServAttrTbl[] =
       &timerCtrlProps
     },
 
-      // timer controller Characteristic Value
+      // 计时控制点特征值
       {
         { ATT_UUID_SIZE, timerCtrlUUID },
         GATT_PERMIT_READ | GATT_PERMIT_WRITE,
@@ -109,7 +109,7 @@ static gattAttribute_t timerServAttrTbl[] =
         &timerCtrl
       },
 
-     // 定时周期特征声明
+     // 计时周期特征声明
     {
       { ATT_BT_UUID_SIZE, characterUUID },
       GATT_PERMIT_READ,
@@ -117,7 +117,7 @@ static gattAttribute_t timerServAttrTbl[] =
       &timerPeriodProps
     },
 
-      // Characteristic Value "Period"
+      // 计时周期特征值
       {
         { ATT_UUID_SIZE, timerPeriodUUID },
         GATT_PERMIT_READ | GATT_PERMIT_WRITE,
@@ -192,7 +192,7 @@ static uint8 timer_ReadAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
       VOID osal_memcpy( pValue, pAttr->pValue, 2 );
       break;
       
-    // 读控制点和定时周期值，都是单字节  
+    // 读定时控制点和定时周期值，都是单字节  
     case TIMER_CTRL_UUID:
     case TIMER_PERIOD_UUID:
       *pLen = 1;
@@ -251,11 +251,6 @@ static bStatus_t timer_WriteAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
 
         *pCurValue = pValue[0];
         *(pCurValue+1) = pValue[1];
-
-        if( pAttr->pValue == timerCurTime )
-        {
-          //notifyApp = TIMER_CURTIME;
-        }
       }
       
       break;
@@ -308,6 +303,7 @@ static bStatus_t timer_WriteAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
       // Write the value
       if ( status == SUCCESS )
       {
+        // 定时周期必须在1-60分钟之间
         if ( pValue[0] >= 1 && pValue[0] <= 60 )
         {
           uint8 *pCurValue = (uint8 *)pAttr->pValue;

@@ -21,25 +21,35 @@ CONST uint8 tempHumidServUUID[ATT_UUID_SIZE] =
   CM_UUID(TEMPHUMID_SERV_UUID)
 };
 
-// 温湿度数据UUID
+// 实时温湿度数据UUID
 CONST uint8 tempHumidDataUUID[ATT_UUID_SIZE] =
 { 
   CM_UUID(TEMPHUMID_DATA_UUID)
 };
 
-// 测量控制点UUID
+// 实时测量控制点UUID
 CONST uint8 tempHumidCtrlUUID[ATT_UUID_SIZE] =
 { 
   CM_UUID(TEMPHUMID_CTRL_UUID)
 };
 
-// 测量周期UUID
+// 实时测量周期UUID
 CONST uint8 tempHumidPeriodUUID[ATT_UUID_SIZE] =
 { 
   CM_UUID(TEMPHUMID_PERI_UUID)
 };
 
+// 历史数据的时间UUID
+CONST uint8 tempHumidHistoryTimeUUID[ATT_UUID_SIZE] =
+{ 
+  CM_UUID(TEMPHUMID_HISTORY_TIME_UUID)
+};
 
+// 历史数据UUID
+CONST uint8 tempHumidHistoryDataUUID[ATT_UUID_SIZE] =
+{ 
+  CM_UUID(TEMPHUMID_HISTORY_DATA_UUID)
+};
 
 
 
@@ -49,21 +59,30 @@ CONST uint8 tempHumidPeriodUUID[ATT_UUID_SIZE] =
 /*
 * 局部变量
 */
-// 服务属性值
+// 温湿度服务属性值
 static CONST gattAttrType_t tempHumidService = { ATT_UUID_SIZE, tempHumidServUUID };
 
-// 温湿度数据的相关属性
+// 实时温湿度数据的相关属性：可读可通知
 static uint8 tempHumidDataProps = GATT_PROP_READ | GATT_PROP_NOTIFY;
 static uint8 tempHumidData[TEMPHUMID_DATA_LEN] = {0};
 static gattCharCfg_t tempHumidDataConfig[GATT_MAX_NUM_CONN];
 
-// 测量控制点的相关属性
+// 实时测量控制点的相关属性：可读可写
 static uint8 tempHumidCtrlProps = GATT_PROP_READ | GATT_PROP_WRITE;
 static uint8 tempHumidCtrl = 0;
 
-// 测量周期的相关属性
+// 实时测量周期的相关属性：可读可写
 static uint8 tempHumidPeriodProps = GATT_PROP_READ | GATT_PROP_WRITE;
-static uint8 tempHumidPeriod = 0;    
+static uint8 tempHumidPeriod = 0;  
+
+// 历史测量数据的时间相关属性：可写
+static uint8 tempHumidHistoryTimeProps = GATT_PROP_WRITE;
+static uint8 tempHumidHistoryTime[2] = {0}; 
+
+// 历史数据的相关属性：可读
+static uint8 tempHumidHistoryDataProps = GATT_PROP_READ;
+static uint8 tempHumidHistoryData[TEMPHUMID_DATA_LEN] = {0}; 
+
 
 
 // 服务的属性表
@@ -77,7 +96,7 @@ static gattAttribute_t tempHumidServAttrTbl[] =
     (uint8 *)&tempHumidService                /* pValue */
   },
 
-    // 温湿度数据特征声明
+    // 实时温湿度数据特征声明
     { 
       { ATT_BT_UUID_SIZE, characterUUID },
       GATT_PERMIT_READ, 
@@ -85,7 +104,7 @@ static gattAttribute_t tempHumidServAttrTbl[] =
       &tempHumidDataProps 
     },
 
-      // tempHumid data Characteristic Value
+      // 实时温湿度数据特征值
       { 
         { ATT_UUID_SIZE, tempHumidDataUUID },
         GATT_PERMIT_READ, 
@@ -93,7 +112,7 @@ static gattAttribute_t tempHumidServAttrTbl[] =
         tempHumidData 
       }, 
       
-      // Characteristic configuration
+      // 实时温湿度数据特征的配置
       {
         { ATT_BT_UUID_SIZE, clientCharCfgUUID },
         GATT_PERMIT_READ | GATT_PERMIT_WRITE,
@@ -101,7 +120,7 @@ static gattAttribute_t tempHumidServAttrTbl[] =
         (uint8 *)tempHumidDataConfig
       },
       
-    // 测量控制点特征声明
+    // 实时测量控制点特征声明
     {
       { ATT_BT_UUID_SIZE, characterUUID },
       GATT_PERMIT_READ,
@@ -109,7 +128,7 @@ static gattAttribute_t tempHumidServAttrTbl[] =
       &tempHumidCtrlProps
     },
 
-      // Characteristic Value "Configuration"
+      // 实时测量控制点特征值
       {
         { ATT_UUID_SIZE, tempHumidCtrlUUID },
         GATT_PERMIT_READ | GATT_PERMIT_WRITE,
@@ -117,7 +136,7 @@ static gattAttribute_t tempHumidServAttrTbl[] =
         &tempHumidCtrl
       },
 
-     // 测量周期特征声明
+    // 实时测量周期特征声明
     {
       { ATT_BT_UUID_SIZE, characterUUID },
       GATT_PERMIT_READ,
@@ -125,13 +144,45 @@ static gattAttribute_t tempHumidServAttrTbl[] =
       &tempHumidPeriodProps
     },
 
-      // Characteristic Value "Period"
+      // 实时测量周期特征值
       {
         { ATT_UUID_SIZE, tempHumidPeriodUUID },
         GATT_PERMIT_READ | GATT_PERMIT_WRITE,
         0,
         &tempHumidPeriod
       },
+      
+    // 历史数据的时间特征声明
+    {
+      { ATT_BT_UUID_SIZE, characterUUID },
+      GATT_PERMIT_READ,
+      0,
+      &tempHumidHistoryTimeProps
+    },
+
+      // 历史数据时间特征值
+      {
+        { ATT_UUID_SIZE, tempHumidHistoryTimeUUID },
+        GATT_PERMIT_WRITE,
+        0,
+        tempHumidHistoryTime
+      },    
+      
+    // 历史数据特征声明
+    {
+      { ATT_BT_UUID_SIZE, characterUUID },
+      GATT_PERMIT_READ,
+      0,
+      &tempHumidHistoryDataProps
+    },
+
+      // 历史数据特征值
+      {
+        { ATT_UUID_SIZE, tempHumidHistoryDataUUID },
+        GATT_PERMIT_READ,
+        0,
+        tempHumidHistoryData
+      },         
 };
 
 
@@ -195,12 +246,13 @@ static uint8 tempHumid_ReadAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
     // No need for "GATT_SERVICE_UUID" or "GATT_CLIENT_CHAR_CFG_UUID" cases;
     // gattserverapp handles those reads
     case TEMPHUMID_DATA_UUID:
+    case TEMPHUMID_HISTORY_DATA_UUID:
       // 读温湿度值
       *pLen = TEMPHUMID_DATA_LEN;
       VOID osal_memcpy( pValue, pAttr->pValue, TEMPHUMID_DATA_LEN );
       break;
       
-    // 读控制点和测样周期值，都是单字节  
+    // 读实时控制点和周期值，都是单字节  
     case TEMPHUMID_CTRL_UUID:
     case TEMPHUMID_PERI_UUID:
       *pLen = 1;
@@ -305,6 +357,36 @@ static bStatus_t tempHumid_WriteAttrCB( uint16 connHandle, gattAttribute_t *pAtt
            status = ATT_ERR_INVALID_VALUE;
         }
       }
+      break;
+      
+    case TEMPHUMID_HISTORY_TIME_UUID:
+      // Validate the value
+      // Make sure it's not a blob oper
+      if ( offset == 0 )
+      {
+        if ( len != 2 )
+        {
+          status = ATT_ERR_INVALID_VALUE_SIZE;
+        }
+      }
+      else
+      {
+        status = ATT_ERR_ATTR_NOT_LONG;
+      }
+
+      // Write the value
+      if ( status == SUCCESS )
+      {
+        uint8 *pCurValue = (uint8 *)pAttr->pValue;
+
+        *pCurValue = pValue[0];
+        *(pCurValue+1) = pValue[1];
+
+        if( pAttr->pValue == tempHumidHistoryTime )
+        {
+          notifyApp = TEMPHUMID_HISTORYTIME;
+        }
+      }      
       break;
 
     // 写温湿度数据的CCC  
@@ -439,6 +521,30 @@ extern bStatus_t TempHumid_SetParameter( uint8 param, uint8 len, void *value )
         ret = bleInvalidRange;
       }
       break;
+      
+    // 设置历史数据的时间
+    case TEMPHUMID_HISTORYTIME:
+      if ( len == 2 )
+      {
+        VOID osal_memcpy( tempHumidHistoryTime, value, len );
+      }
+      else
+      {
+        ret = bleInvalidRange;
+      }
+      break;   
+      
+    // 设置历史数据
+    case TEMPHUMID_HISTORYDATA:
+      if ( len == TEMPHUMID_DATA_LEN )
+      {
+        VOID osal_memcpy( tempHumidHistoryData, value, len );
+      }
+      else
+      {
+        ret = bleInvalidRange;
+      }
+      break;         
 
     default:
       ret = INVALIDPARAMETER;
@@ -469,6 +575,16 @@ extern bStatus_t TempHumid_GetParameter( uint8 param, void *value )
     case TEMPHUMID_PERI:
       *((uint8*)value) = tempHumidPeriod;
       break;
+      
+    // 获取历史数据的时间
+    case TEMPHUMID_HISTORYTIME:
+      VOID osal_memcpy( value, tempHumidHistoryTime, 2 );
+      break;
+      
+    // 获取历史数据
+    case TEMPHUMID_HISTORYDATA:
+      VOID osal_memcpy( value, tempHumidHistoryData, TEMPHUMID_DATA_LEN );
+      break;      
 
     default:
       ret = INVALIDPARAMETER;
