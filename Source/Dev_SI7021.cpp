@@ -13,7 +13,7 @@
 
 
 #include "Dev_SI7021.h"
-
+#include "osal.h"
 
 /*
 * 常量
@@ -118,3 +118,11 @@ extern SI7021_HumiAndTemp SI7021_Measure()
   return rtn;
 }
 
+// 同时测湿度和温度，并返回数组
+extern void SI7021_MeasureData(uint8* pData)
+{
+  float humid = SI7021_MeasureHumidity();
+  float temp = SI7021_ReadTemperature();
+  uint8* pt = osal_memcpy(pData, (uint8*)&humid, sizeof(float));
+  osal_memcpy(pt, (uint8*)&temp, sizeof(float));
+}

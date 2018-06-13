@@ -424,7 +424,7 @@ static void tempHumidServiceCB( uint8 paramID )
   uint8 newValue;
   uint8 time[2] = {0};
   uint8 data[8] = {-1};
-  float tmp = -1.0;
+  float invalidValue = -1.0;
 
   switch (paramID)
   {
@@ -452,8 +452,8 @@ static void tempHumidServiceCB( uint8 paramID )
       
     case TEMPHUMID_HISTORYTIME:
       TempHumid_GetParameter(TEMPHUMID_HISTORYTIME, time);
-      osal_memcpy(data, (uint8*)&tmp, sizeof(float));
-      osal_memcpy(data+4, (uint8*)&tmp, sizeof(float));
+      osal_memcpy(data, (uint8*)&invalidValue, sizeof(float));
+      osal_memcpy(data+4, (uint8*)&invalidValue, sizeof(float));
       Queue_GetDataAtTime(data, time);
       TempHumid_SetParameter(TEMPHUMID_HISTORYDATA, 8, data);
     
@@ -503,8 +503,6 @@ static void timerStart( void )
 {  
   uint8 time[2] = {0};
   Timer_GetParameter(TIMER_CURTIME, time);
-  //uint8 minPeriod = 0;
-  //Timer_GetParameter(TIMER_PERIOD, &minPeriod);
   uint8 tmp = time[1]%minPeriod;
   time[1] -= tmp;
   Timer_SetParameter(TIMER_CURTIME, 2, time);
@@ -555,15 +553,10 @@ static void tempHumidStop( void )
 // 读取传输数据
 static void tempHumidReadAndTransferData()
 {
-  SI7021_HumiAndTemp humidTemp = SI7021_Measure();
   uint8 data[TEMPHUMID_DATA_LEN] = {0};
-  uint8* pt = (uint8*)(&(humidTemp.humid));
-  for(int i = 0; i < sizeof(float); i++) 
-    data[i] = *pt++;
-  pt = (uint8*)(&(humidTemp.temp));
-  for(int i = 0; i < sizeof(float); i++) 
-    data[i+4] = *pt++;
-  TempHumid_SetParameter( TEMPHUMID_DATA, TEMPHUMID_DATA_LEN, (uint8*)data); 
+  SI7021_MeasureData(data);
+
+  TempHumid_SetParameter( TEMPHUMID_DATA, TEMPHUMID_DATA_LEN, data); 
 }
 
 // 读取并保存当前温湿度数据
@@ -571,21 +564,14 @@ static void tempHumidReadAndStoreData()
 {
   uint8 time[2] = {0};
   Timer_GetParameter(TIMER_CURTIME, time);
-  
-  // 前两次不稳定，获取第三次数据
-  SI7021_Measure();
-  SI7021_Measure();
-  SI7021_HumiAndTemp humidTemp = SI7021_Measure();
   uint8 data[10] = {0};
   data[0] = time[0];
   data[1] = time[1];
   
-  uint8* pt = (uint8*)(&(humidTemp.humid));
-  for(int i = 0; i < sizeof(float); i++) 
-    data[i+2] = *pt++;
-  pt = (uint8*)(&(humidTemp.temp));
-  for(int i = 0; i < sizeof(float); i++) 
-    data[i+6] = *pt++;
+  // 前两次不稳定，获取第三次数据
+  SI7021_Measure();
+  SI7021_Measure();
+  SI7021_MeasureData(data+2);
   
   //加入保存数据的代码
   Queue_Push(data);

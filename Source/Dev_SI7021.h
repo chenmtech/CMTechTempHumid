@@ -27,6 +27,9 @@ extern float SI7021_MeasureTemperature();
 //同时测湿度和温度
 extern SI7021_HumiAndTemp SI7021_Measure();
 
+// 同时测湿度和温度，并返回数组
+extern void SI7021_MeasureData(uint8* pData);
+
  
 #endif
 
