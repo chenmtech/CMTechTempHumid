@@ -62,7 +62,7 @@ static uint8 timerCtrl = 0;
 
 // 定时周期的相关属性：可读可写，单位：分钟
 static uint8 timerPeriodProps = GATT_PROP_READ | GATT_PROP_WRITE;
-static uint8 timerPeriod = 10;    
+static uint8 timerPeriod = 30;    
 
 
 // 服务的属性表
@@ -257,6 +257,7 @@ static bStatus_t timer_WriteAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
 
     // 写定时控制点
     case TIMER_CTRL_UUID:
+    case TIMER_PERIOD_UUID:
       // Validate the value
       // Make sure it's not a blob oper
       if ( offset == 0 )
@@ -281,11 +282,15 @@ static bStatus_t timer_WriteAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
         if( pAttr->pValue == &timerCtrl )
         {
           notifyApp = TIMER_CTRL;
+        } else if( pAttr->pValue == &timerPeriod)
+        {
+          notifyApp = TIMER_PERIOD;
         }
       }
       break;
 
     // 写定时周期
+      /*
     case TIMER_PERIOD_UUID:
       // Validate the value
       // Make sure it's not a blob oper
@@ -318,8 +323,17 @@ static bStatus_t timer_WriteAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
         {
            status = ATT_ERR_INVALID_VALUE;
         }
+        uint8 *pCurValue = (uint8 *)pAttr->pValue;
+
+        *pCurValue = pValue[0];
+
+        if( pAttr->pValue == &timerPeriod )
+        {
+          notifyApp = TIMER_PERIOD;
+        }
       }
       break;
+      */
 
     default:
       // Should never get here!

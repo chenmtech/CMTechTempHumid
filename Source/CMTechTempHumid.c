@@ -86,7 +86,7 @@ static uint8 status = STATUS_STOP;
 static uint16 period = DEFAULT_PERIOD;
 
 // 定时周期，单位：分钟
-static uint8 minPeriod = 10;
+static uint8 minPeriod = 30;
 
 /*********************************************************************
  * 局部函数
