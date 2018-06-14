@@ -21,27 +21,10 @@ CONST uint8 timerServUUID[ATT_UUID_SIZE] =
   CM_UUID(TIMER_SERV_UUID)
 };
 
-// 当前时间UUID
-CONST uint8 timerCurTimeUUID[ATT_UUID_SIZE] =
+CONST uint8 timerValueUUID[ATT_UUID_SIZE] =
 { 
-  CM_UUID(TIMER_CURTIME_UUID)
+  CM_UUID(TIMER_VALUE_UUID)
 };
-
-// 定时控制点UUID
-CONST uint8 timerCtrlUUID[ATT_UUID_SIZE] =
-{ 
-  CM_UUID(TIMER_CTRL_UUID)
-};
-
-// 定时周期UUID
-CONST uint8 timerPeriodUUID[ATT_UUID_SIZE] =
-{ 
-  CM_UUID(TIMER_PERIOD_UUID)
-};
-
-
-
-
 
 
 
@@ -53,16 +36,8 @@ CONST uint8 timerPeriodUUID[ATT_UUID_SIZE] =
 static CONST gattAttrType_t timerService = { ATT_UUID_SIZE, timerServUUID };
 
 // 当前时间的相关属性：可读可写
-static uint8 timerCurTimeProps = GATT_PROP_READ | GATT_PROP_WRITE;
-static uint8 timerCurTime[2] = {0};
-
-// 定时控制点的相关属性：可读可写
-static uint8 timerCtrlProps = GATT_PROP_READ | GATT_PROP_WRITE;
-static uint8 timerCtrl = 0;
-
-// 定时周期的相关属性：可读可写，单位：分钟
-static uint8 timerPeriodProps = GATT_PROP_READ | GATT_PROP_WRITE;
-static uint8 timerPeriod = 30;    
+static uint8 timerValueProps = GATT_PROP_READ | GATT_PROP_WRITE;
+static uint8 timerValue[4] = {0};   //value0:hour, value1:minute, value2:period, value3:trig
 
 
 // 服务的属性表
@@ -76,60 +51,22 @@ static gattAttribute_t timerServAttrTbl[] =
     (uint8 *)&timerService                /* pValue */
   },
 
-    // 当前时间特征声明
-    { 
-      { ATT_BT_UUID_SIZE, characterUUID },
-      GATT_PERMIT_READ, 
-      0,
-      &timerCurTimeProps 
-    },
-
-      // 当前时间特征值
-      { 
-        { ATT_UUID_SIZE, timerCurTimeUUID },
-        GATT_PERMIT_READ | GATT_PERMIT_WRITE, 
-        0, 
-        timerCurTime 
-      }, 
-
-      
-    // 计时控制点特征声明
+    // 当前计时特征声明
     {
       { ATT_BT_UUID_SIZE, characterUUID },
       GATT_PERMIT_READ,
       0,
-      &timerCtrlProps
+      &timerValueProps
     },
 
-      // 计时控制点特征值
+      // 计时特征值
       {
-        { ATT_UUID_SIZE, timerCtrlUUID },
+        { ATT_UUID_SIZE, timerValueUUID },
         GATT_PERMIT_READ | GATT_PERMIT_WRITE,
         0,
-        &timerCtrl
-      },
-
-     // 计时周期特征声明
-    {
-      { ATT_BT_UUID_SIZE, characterUUID },
-      GATT_PERMIT_READ,
-      0,
-      &timerPeriodProps
-    },
-
-      // 计时周期特征值
-      {
-        { ATT_UUID_SIZE, timerPeriodUUID },
-        GATT_PERMIT_READ | GATT_PERMIT_WRITE,
-        0,
-        &timerPeriod
-      },
+        timerValue
+      },      
 };
-
-
-
-
-
 
 
 /*
@@ -186,17 +123,9 @@ static uint8 timer_ReadAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
   {
     // No need for "GATT_SERVICE_UUID" or "GATT_CLIENT_CHAR_CFG_UUID" cases;
     // gattserverapp handles those reads
-    case TIMER_CURTIME_UUID:
-      // 读当前时间值
-      *pLen = 2;
-      VOID osal_memcpy( pValue, pAttr->pValue, 2 );
-      break;
-      
-    // 读定时控制点和定时周期值，都是单字节  
-    case TIMER_CTRL_UUID:
-    case TIMER_PERIOD_UUID:
-      *pLen = 1;
-      pValue[0] = *pAttr->pValue;
+    case TIMER_VALUE_UUID:
+      *pLen = 4;
+      VOID osal_memcpy( pValue, pAttr->pValue, 4 );
       break;
       
     default:
@@ -230,11 +159,12 @@ static bStatus_t timer_WriteAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
   
   switch ( uuid )
   {
-    case TIMER_CURTIME_UUID:
-      // 写当前时间值
+    // 写当前时间值
+    case TIMER_VALUE_UUID:
+     
       if ( offset == 0 )
       {
-        if ( len != 2 )
+        if ( len != 4 )
         {
           status = ATT_ERR_INVALID_VALUE_SIZE;
         }
@@ -248,92 +178,17 @@ static bStatus_t timer_WriteAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
       if ( status == SUCCESS )
       {
         uint8 *pCurValue = (uint8 *)pAttr->pValue;
-
-        *pCurValue = pValue[0];
-        *(pCurValue+1) = pValue[1];
+        
+        osal_memcpy(pCurValue, pValue, 4);
+        
+        if( pAttr->pValue == timerValue )
+        {
+          notifyApp = TIMER_VALUE;
+        }
       }
       
       break;
-
-    // 写定时控制点
-    case TIMER_CTRL_UUID:
-    case TIMER_PERIOD_UUID:
-      // Validate the value
-      // Make sure it's not a blob oper
-      if ( offset == 0 )
-      {
-        if ( len != 1 )
-        {
-          status = ATT_ERR_INVALID_VALUE_SIZE;
-        }
-      }
-      else
-      {
-        status = ATT_ERR_ATTR_NOT_LONG;
-      }
-
-      // Write the value
-      if ( status == SUCCESS )
-      {
-        uint8 *pCurValue = (uint8 *)pAttr->pValue;
-
-        *pCurValue = pValue[0];
-
-        if( pAttr->pValue == &timerCtrl )
-        {
-          notifyApp = TIMER_CTRL;
-        } else if( pAttr->pValue == &timerPeriod)
-        {
-          notifyApp = TIMER_PERIOD;
-        }
-      }
-      break;
-
-    // 写定时周期
-      /*
-    case TIMER_PERIOD_UUID:
-      // Validate the value
-      // Make sure it's not a blob oper
-      if ( offset == 0 )
-      {
-        if ( len != 1 )
-        {
-          status = ATT_ERR_INVALID_VALUE_SIZE;
-        }
-      }
-      else
-      {
-        status = ATT_ERR_ATTR_NOT_LONG;
-      }
-      // Write the value
-      if ( status == SUCCESS )
-      {
-        // 定时周期必须在1-60分钟之间
-        if ( pValue[0] >= 1 && pValue[0] <= 60 )
-        {
-          uint8 *pCurValue = (uint8 *)pAttr->pValue;
-          *pCurValue = pValue[0];
-
-          if( pAttr->pValue == &timerPeriod )
-          {
-            notifyApp = TIMER_PERIOD;
-          }
-        }
-        else
-        {
-           status = ATT_ERR_INVALID_VALUE;
-        }
-        uint8 *pCurValue = (uint8 *)pAttr->pValue;
-
-        *pCurValue = pValue[0];
-
-        if( pAttr->pValue == &timerPeriod )
-        {
-          notifyApp = TIMER_PERIOD;
-        }
-      }
-      break;
-      */
+      
 
     default:
       // Should never get here!
@@ -423,34 +278,10 @@ extern bStatus_t Timer_SetParameter( uint8 param, uint8 len, void *value )
   switch ( param )
   {
     // 设置当前时间
-    case TIMER_CURTIME:
-      if ( len == 2 )
+    case TIMER_VALUE:
+      if ( len == 4 )
       {
-        VOID osal_memcpy( timerCurTime, value, 2 );
-      }
-      else
-      {
-        ret = bleInvalidRange;
-      }
-      break;
-
-    // 设置定时控制点
-    case TIMER_CTRL:
-      if ( len == sizeof ( uint8 ) )
-      {
-        timerCtrl = *((uint8*)value);
-      }
-      else
-      {
-        ret = bleInvalidRange;
-      }
-      break;
-
-    // 设置定时周期  
-    case TIMER_PERIOD:
-      if ( len == sizeof ( uint8 ) )
-      {
-        timerPeriod = *((uint8*)value);
+        VOID osal_memcpy( timerValue, value, len );
       }
       else
       {
@@ -474,18 +305,8 @@ extern bStatus_t Timer_GetParameter( uint8 param, void *value )
   switch ( param )
   {
     // 获取当前时间
-    case TIMER_CURTIME:
-      VOID osal_memcpy( value, timerCurTime, 2 );
-      break;
-
-    // 获取定时控制点  
-    case TIMER_CTRL:
-      *((uint8*)value) = timerCtrl;
-      break;
-
-    // 获取定时周期  
-    case TIMER_PERIOD:
-      *((uint8*)value) = timerPeriod;
+    case TIMER_VALUE:
+      VOID osal_memcpy( value, timerValue, 4 );
       break;
 
     default:

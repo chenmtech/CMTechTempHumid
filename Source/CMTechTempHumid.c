@@ -86,7 +86,7 @@ static uint8 status = STATUS_STOP;
 static uint16 period = DEFAULT_PERIOD;
 
 // 定时周期，单位：分钟
-static uint8 minPeriod = 30;
+static uint8 timerPeriod = 30;
 
 /*********************************************************************
  * 局部函数
@@ -102,12 +102,6 @@ static void tempHumidServiceCB( uint8 paramID );
 
 // 定时服务回调函数
 static void timerServiceCB( uint8 paramID );
-
-// 启动定时
-static void timerStart( void );
-
-// 停止定时
-static void timerStop( void );
 
 // 初始化
 static void tempHumidInit();
@@ -279,24 +273,23 @@ extern uint16 TempHumid_ProcessEvent( uint8 task_id, uint16 events )
     return (events ^ TEMPHUMID_START_PERIODIC_EVT);
   }
   
+  // 定时服务事件
   if ( events & TEMPHUMID_START_TIMER_EVT )
   {
-    uint8 time[2] = {0};
-    Timer_GetParameter(TIMER_CURTIME, time);
-    //uint8 minPeriod = 0;
-    //Timer_GetParameter(TIMER_PERIOD, &minPeriod);
-    time[1] += minPeriod;
-    if(time[1] >= 60) {
-      time[1] -= 60;
-      time[0]++;
-      if(time[0] == 24) {
-        time[0] = 0;
+    uint8 value[4] = {0};
+    // 更新当前时间
+    Timer_GetParameter(TIMER_VALUE, value);
+    value[1] += timerPeriod;
+    if(value[1] >= 60) {
+      value[1] -= 60;
+      value[0]++;
+      if(value[0] == 24) {
+        value[0] = 0;
       }
     }
-    
-    Timer_SetParameter(TIMER_CURTIME, 2, time);
+    Timer_SetParameter(TIMER_VALUE, 4, value);
 
-    osal_start_timerEx( tempHumid_TaskID, TEMPHUMID_START_TIMER_EVT, minPeriod*60000L );
+    osal_start_timerEx( tempHumid_TaskID, TEMPHUMID_START_TIMER_EVT, timerPeriod*60000L );
     
     tempHumidReadAndStoreData();
 
@@ -466,57 +459,34 @@ static void tempHumidServiceCB( uint8 paramID )
 
 static void timerServiceCB( uint8 paramID )
 {
-  uint8 newValue;
+  uint8 value[4];
 
   switch (paramID)
   {
-    case TIMER_CTRL:
-      Timer_GetParameter( TIMER_CTRL, &newValue );
+    case TIMER_VALUE:
+      Timer_GetParameter(TIMER_VALUE, value);
       
-      // 停止定时
-      if ( newValue == TIMER_CTRL_STOP)  
-      {
-        timerStop();
-      }
-      // 开始定时
-      else if ( newValue == TIMER_CTRL_START) 
-      {
-        timerStart();
+      if(value[3] == 0x00) {
+        osal_stop_timerEx( tempHumid_TaskID, TEMPHUMID_START_TIMER_EVT);  // 停止计时服务
+      } else {
+        if(value[2] >= 1 && value[2] <= 30) // 计时周期必须在1-30分钟
+        {
+          timerPeriod = value[2];   // 更新计时周期
+          uint8 tmp = value[1]%timerPeriod;
+          value[1] -= tmp;          // 调整minute
+          Timer_SetParameter(TIMER_VALUE, 4, value);    // 更新计时特征值
+          Queue_Init();
+          osal_start_reload_timer( tempHumid_TaskID, TEMPHUMID_START_TIMER_EVT, (timerPeriod-tmp)*60000L );
+        }
       }
       
       break;
-
-    case TIMER_PERIOD:
-      Timer_GetParameter( TIMER_PERIOD, &newValue );
-      minPeriod = newValue;
-
-      break;
-
+      
     default:
       // Should not get here
       break;
   }
 }
-
-// 启动定时
-static void timerStart( void )
-{  
-  uint8 time[2] = {0};
-  Timer_GetParameter(TIMER_CURTIME, time);
-  uint8 tmp = time[1]%minPeriod;
-  time[1] -= tmp;
-  Timer_SetParameter(TIMER_CURTIME, 2, time);
-  
-  Queue_Init();
-  osal_start_reload_timer( tempHumid_TaskID, TEMPHUMID_START_TIMER_EVT, (minPeriod-tmp)*60000L );
-}
-
-// 停止定时
-static void timerStop( void )
-{  
-  osal_stop_timerEx( tempHumid_TaskID, TEMPHUMID_START_TIMER_EVT);
-}
-
 
 // 初始化温湿度服务参数
 static void tempHumidInit()
@@ -562,11 +532,11 @@ static void tempHumidReadAndTransferData()
 // 读取并保存当前温湿度数据
 static void tempHumidReadAndStoreData()
 {
-  uint8 time[2] = {0};
-  Timer_GetParameter(TIMER_CURTIME, time);
+  uint8 value[4] = {0};
+  Timer_GetParameter(TIMER_VALUE, value);
   uint8 data[10] = {0};
-  data[0] = time[0];
-  data[1] = time[1];
+  data[0] = value[0];
+  data[1] = value[1];
   
   // 前两次不稳定，获取第三次数据
   SI7021_Measure();

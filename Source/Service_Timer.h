@@ -8,16 +8,12 @@
 
 
 // 特征标记位
-#define TIMER_CURTIME                 0       //当前时间
-#define TIMER_CTRL                    1       //定时控制
-#define TIMER_PERIOD                  2       //定时周期
+#define TIMER_VALUE                   0
 
 
 // 服务和特征的16位UUID
 #define TIMER_SERV_UUID               0xAA70     // 定时服务UUID
-#define TIMER_CURTIME_UUID            0xAA71     // 当前时间UUID
-#define TIMER_CTRL_UUID               0xAA72     // 定时控制UUID
-#define TIMER_PERIOD_UUID             0xAA73     // 定时周期UUID，相当于计时精度
+#define TIMER_VALUE_UUID              0xAA71     // 定时特征值UUID
 
 
 // 服务的bit field
