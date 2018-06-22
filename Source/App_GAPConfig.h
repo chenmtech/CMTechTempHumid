@@ -4,9 +4,9 @@
 #ifndef APP_GAPCONFIG_H
 #define APP_GAPCONFIG_H
 
-
-#define GAP_PARI_PASSWORD_READ    0x00
-#define GAP_PARI_PASSWORD_WRITE   0x01
+// 配对密码操作
+#define GAP_PARI_PASSWORD_READ    0x00    // 读
+#define GAP_PARI_PASSWORD_WRITE   0x01    // 写
 
 
 //设置与广播相关的参数，但是大多数广播数据和扫描响应数据还是静态配置
@@ -47,6 +47,12 @@ extern void GAPConfig_SetGGSParam(uint8* devName);
 //      GAPBOND_PAIRING_MODE_INITIATE: 立刻启动配对
 // isBonding: 是否绑定
 extern void GAPConfig_SetPairBondingParam(uint8 pairMode, uint8 isBonding);
+
+// 读配对密码
+extern uint32 GapConfig_ReadPairPassword();
+
+// 写配对密码
+extern void GapConfig_WritePairPassword(uint32 password);
 
 // 对配对密码进行读写操作
 // flag: 0-》读，1-》写

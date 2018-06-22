@@ -146,6 +146,18 @@ extern void GAPConfig_SetPairBondingParam(uint8 pairMode, uint8 isBonding)
   GAPBondMgr_SetParameter( GAPBOND_BONDING_ENABLED, sizeof ( uint8 ), &isBonding );
 }
 
+extern uint32 GapConfig_ReadPairPassword()
+{
+  uint32 password;
+  GapConfig_SNV_Password(GAP_PARI_PASSWORD_READ, (uint8*)(&password), sizeof(uint32));
+  return password;
+}
+
+extern void GapConfig_WritePairPassword(uint32 password)
+{
+  GapConfig_SNV_Password(GAP_PARI_PASSWORD_WRITE, (uint8*)(&password), sizeof(uint32));
+}
+
 extern void GapConfig_SNV_Password(uint8 flag, uint8* pPassword, uint8 len)  
 {  
   uint8 ret;  

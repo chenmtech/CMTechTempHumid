@@ -6406,6 +6406,12 @@
       <name>$PROJ_DIR$\..\Source\OSAL_CMTechTempHumid.c</name>
     </file>
     <file>
+      <name>$PROJ_DIR$\..\Source\Service_PairPwd.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\Service_PairPwd.h</name>
+    </file>
+    <file>
       <name>$PROJ_DIR$\..\Source\Service_TempHumid.c</name>
     </file>
     <file>

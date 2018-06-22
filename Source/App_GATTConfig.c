@@ -25,3 +25,12 @@ extern void GATTConfig_SetTimerService(timerServiceCBs_t* appCBs)
   // 登记回调
   VOID Timer_RegisterAppCBs( appCBs );   
 }
+
+//配置配对密码服务
+extern void GATTConfig_SetPairPwdService(pairPwdServiceCBs_t* appCBs)
+{
+  PAIRPWD_AddService( GATT_ALL_SERVICES );  // 加载服务  
+
+  // 登记回调
+  VOID PAIRPWD_RegisterAppCBs( appCBs );   
+}

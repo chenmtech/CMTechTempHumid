@@ -10,6 +10,8 @@
 
 #include "Service_Timer.h"
 
+#include "Service_PairPwd.h"
+
 //配置TempHumid服务
 extern void GATTConfig_SetTempHumidService(tempHumidServiceCBs_t* appCBs);
 
@@ -17,7 +19,7 @@ extern void GATTConfig_SetTempHumidService(tempHumidServiceCBs_t* appCBs);
 //配置Timer服务
 extern void GATTConfig_SetTimerService(timerServiceCBs_t* appCBs);
 
-
+extern void GATTConfig_SetPairPwdService(pairPwdServiceCBs_t* appCBs);
 
 
 

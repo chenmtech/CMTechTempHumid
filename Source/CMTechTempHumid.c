@@ -105,6 +105,9 @@ static void tempHumidServiceCB( uint8 paramID );
 // 定时服务回调函数
 static void timerServiceCB( uint8 paramID );
 
+// 配对密码服务回调函数
+static void pairPwdServiceCB( uint8 paramID );
+
 // 初始化
 static void tempHumidInit();
 
@@ -154,6 +157,12 @@ static timerServiceCBs_t timer_ServCBs =
   timerServiceCB    // 定时服务回调函数实例，函数是Serice_Timer中声明的
 };
 
+// 配对密码服务回调结构体实例，结构体是Serice_PairPwd中声明的
+static pairPwdServiceCBs_t pairPwd_ServCBs =
+{
+  pairPwdServiceCB    // 定时服务回调函数实例，函数是Serice_Timer中声明的
+};
+
 
 /*********************************************************************
  * 公共函数
@@ -178,8 +187,11 @@ extern void TempHumid_Init( uint8 task_id )
   //配置GGS，设置设备名
   GAPConfig_SetGGSParam(attDeviceName);
 
-  //配置配对绑定参数
+  //配置配对和绑定参数
   GAPConfig_SetPairBondingParam(GAPBOND_PAIRING_MODE_INITIATE, TRUE);
+  
+  // 每次重启，将密码修改为"000000"
+  GapConfig_WritePairPassword(0L);
 
   // Initialize GATT attributes
   GGS_AddService( GATT_ALL_SERVICES );            // GAP
@@ -193,6 +205,8 @@ extern void TempHumid_Init( uint8 task_id )
   GATTConfig_SetTempHumidService(&tempHumid_ServCBs);  
   
   GATTConfig_SetTimerService(&timer_ServCBs);  
+  
+  GATTConfig_SetPairPwdService(&pairPwd_ServCBs);
 
 
   //在这里初始化GPIO
@@ -297,6 +311,14 @@ extern uint16 TempHumid_ProcessEvent( uint8 task_id, uint16 events )
 
     return (events ^ TEMPHUMID_START_TIMER_EVT);
   }  
+  
+  // 修改配对密码事件
+  if ( events & TEMPHUMID_CHANGE_PAIRPWD_EVT )
+  {
+    GAPConfig_TerminateConn();
+
+    return (events ^ TEMPHUMID_CHANGE_PAIRPWD_EVT);
+  }    
   
 
   // Discard unknown events
@@ -413,6 +435,7 @@ static void peripheralStateNotificationCB( gaprole_States_t newState )
 
 }
 
+// 主机请求密码时的回调
 static void processPasscodeCB(uint8 *deviceAddr, uint16 connectionHandle, uint8 uiInputs, uint8 uiOutputs)    
 {    
   //读密码  
@@ -422,6 +445,7 @@ static void processPasscodeCB(uint8 *deviceAddr, uint16 connectionHandle, uint8 
   //发送密码响应给主机  
   GAPBondMgr_PasscodeRsp(connectionHandle, SUCCESS, password);  
 } 
+
 
 
 static void tempHumidServiceCB( uint8 paramID )
@@ -498,6 +522,23 @@ static void timerServiceCB( uint8 paramID )
       // Should not get here
       break;
   }
+}
+
+// 配对密码服务回调函数
+static void pairPwdServiceCB( uint8 paramID )
+{
+  switch (paramID)
+  {
+    case PAIRPWD_VALUE:
+      // 修改配对密码，1秒后断开连接
+      osal_start_timerEx( tempHumid_TaskID, TEMPHUMID_CHANGE_PAIRPWD_EVT, 1000 ); 
+      
+      break;
+      
+    default:
+      // Should not get here
+      break;
+  }  
 }
 
 // 初始化温湿度服务参数
