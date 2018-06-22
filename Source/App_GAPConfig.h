@@ -5,6 +5,10 @@
 #define APP_GAPCONFIG_H
 
 
+#define GAP_PARI_PASSWORD_READ    0x00
+#define GAP_PARI_PASSWORD_WRITE   0x01
+
+
 //设置与广播相关的参数，但是大多数广播数据和扫描响应数据还是静态配置
 //advInt: 广播间隔时间，单位ms，范围20~10240ms
 //servUUID：本设备包含的服务UUID
@@ -36,13 +40,19 @@ extern bStatus_t GAPConfig_TerminateConn();
 extern void GAPConfig_SetGGSParam(uint8* devName);
 
 
-//设置绑定相关参数
-// passkey : 配对密码
+//设置配对与绑定相关参数
 // pairmode : 配对模式，
 //      GAPBOND_PAIRING_MODE_NO_PAIRING: 不允许配对
 //      GAPBOND_PAIRING_MODE_WAIT_FOR_REQ: 等待对方请求或安全需要时请求
 //      GAPBOND_PAIRING_MODE_INITIATE: 立刻启动配对
-extern void GAPConfig_SetBondingParam(uint32 passkey, uint8 pairmode);
+// isBonding: 是否绑定
+extern void GAPConfig_SetPairBondingParam(uint8 pairMode, uint8 isBonding);
+
+// 对配对密码进行读写操作
+// flag: 0-》读，1-》写
+// pPassword: 密码存储的地址
+// len: 密码的字节长度
+extern void GapConfig_SNV_Password(uint8 flag, uint8* pPassword, uint8 len);
 
 #endif
 

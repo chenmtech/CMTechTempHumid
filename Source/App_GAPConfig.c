@@ -6,6 +6,10 @@
 #include "peripheral.h"
 #include "App_GAPConfig.h"
 #include "CMUtil.h"
+#include "osal_snv.h"
+
+#define GAP_PARI_PASSWORD_NV_ID   0x81
+#define GAP_DEFAULT_PASSWORD      0L    // 出厂配对密码为"000000"
 
 // Minimum connection interval (units of 1.25ms, 80=100ms) if automatic parameter update request is enabled
 //#define DEFAULT_DESIRED_MIN_CONN_INTERVAL     80
@@ -126,14 +130,52 @@ extern void GAPConfig_SetGGSParam(uint8* devName)
 
 //设置绑定相关参数
 // passkey : 配对密码
-extern void GAPConfig_SetBondingParam(uint32 passkey, uint8 pairmode)
+// pairmode：配对模式
+// 1. GAPBOND_PAIRING_MODE_NO_PAIRING: 不允许配对
+// 2. GAPBOND_PAIRING_MODE_WAIT_FOR_REQ: 等着手机端在蓝牙设置中发起配对
+// 3. GAPBOND_PAIRING_MODE_INITIATE: 与手机APP连接后，由我发起配对请求
+extern void GAPConfig_SetPairBondingParam(uint8 pairMode, uint8 isBonding)
 {
   uint8 mitm = TRUE;
   uint8 ioCap = GAPBOND_IO_CAP_DISPLAY_ONLY; //要求手机输入配对密码
-  uint8 bonding = TRUE;
-  GAPBondMgr_SetParameter( GAPBOND_DEFAULT_PASSCODE, sizeof ( uint32 ), &passkey );
-  GAPBondMgr_SetParameter( GAPBOND_PAIRING_MODE, sizeof ( uint8 ), &pairmode );
+  
   GAPBondMgr_SetParameter( GAPBOND_MITM_PROTECTION, sizeof ( uint8 ), &mitm );
-  GAPBondMgr_SetParameter( GAPBOND_IO_CAPABILITIES, sizeof ( uint8 ), &ioCap );
-  GAPBondMgr_SetParameter( GAPBOND_BONDING_ENABLED, sizeof ( uint8 ), &bonding );
+  GAPBondMgr_SetParameter( GAPBOND_IO_CAPABILITIES, sizeof ( uint8 ), &ioCap );  
+
+  GAPBondMgr_SetParameter( GAPBOND_PAIRING_MODE, sizeof ( uint8 ), &pairMode );
+  GAPBondMgr_SetParameter( GAPBOND_BONDING_ENABLED, sizeof ( uint8 ), &isBonding );
 }
+
+extern void GapConfig_SNV_Password(uint8 flag, uint8* pPassword, uint8 len)  
+{  
+  uint8 ret;  
+  uint32 defaultPassword = GAP_DEFAULT_PASSWORD;  
+    
+  //从SNV读密码  
+  if(flag == GAP_PARI_PASSWORD_READ)  
+  {  
+    ret = osal_snv_read(GAP_PARI_PASSWORD_NV_ID, len, pPassword);  
+  
+    //如果第一次读取失败，则说明没有写过密码，是出厂的设备。因此在这里设置为出厂密码。  
+    if(ret == NV_OPER_FAILED)  
+    {  
+      //将出厂密码写入snv中  
+      osal_snv_write(GAP_PARI_PASSWORD_NV_ID, sizeof(uint32), (uint8 *)(&defaultPassword));   
+          
+      //读出密码  
+      ret = osal_snv_read(GAP_PARI_PASSWORD_NV_ID, len, pPassword);  
+    }   
+  }  
+  //写新的密码到SNV    
+  else if(flag == GAP_PARI_PASSWORD_WRITE)  
+  {  
+    //写进新的密码  
+    osal_snv_write(GAP_PARI_PASSWORD_NV_ID, len, pPassword);  
+      
+    //读出密码  
+    ret = osal_snv_read(GAP_PARI_PASSWORD_NV_ID, len, pPassword);   
+  
+    //清除已绑定的设备信息  
+    GAPBondMgr_SetParameter(GAPBOND_ERASE_ALLBONDS, 0, NULL);      
+  }   
+}  

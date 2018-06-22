@@ -97,6 +97,8 @@ static void tempHumid_ProcessOSALMsg( osal_event_hdr_t *pMsg );
 // 状态变化通知回调函数
 static void peripheralStateNotificationCB( gaprole_States_t newState );
 
+static void processPasscodeCB(uint8 *deviceAddr, uint16 connectionHandle, uint8 uiInputs, uint8 uiOutputs);
+
 // 温湿度服务回调函数
 static void tempHumidServiceCB( uint8 paramID );
 
@@ -136,7 +138,7 @@ static gapRolesCBs_t tempHumid_PeripheralCBs =
 // GAP Bond Manager 回调结构体实例，结构体是协议栈声明的
 static gapBondCBs_t tempHumid_BondMgrCBs =
 {
-  NULL,                     // Passcode callback (not used by application)
+  processPasscodeCB,                     // Passcode callback (not used by application)
   NULL                      // Pairing / Bonding state Callback (not used by application)
 };
 
@@ -176,8 +178,8 @@ extern void TempHumid_Init( uint8 task_id )
   //配置GGS，设置设备名
   GAPConfig_SetGGSParam(attDeviceName);
 
-  //配置绑定参数
-  GAPConfig_SetBondingParam(0, GAPBOND_PAIRING_MODE_WAIT_FOR_REQ);
+  //配置配对绑定参数
+  GAPConfig_SetPairBondingParam(GAPBOND_PAIRING_MODE_INITIATE, TRUE);
 
   // Initialize GATT attributes
   GGS_AddService( GATT_ALL_SERVICES );            // GAP
@@ -410,6 +412,16 @@ static void peripheralStateNotificationCB( gaprole_States_t newState )
   gapProfileState = newState;
 
 }
+
+static void processPasscodeCB(uint8 *deviceAddr, uint16 connectionHandle, uint8 uiInputs, uint8 uiOutputs)    
+{    
+  //读密码  
+  uint32 password = 0L;
+  GapConfig_SNV_Password(GAP_PARI_PASSWORD_READ, (uint8 *)(&password), sizeof(uint32));  
+    
+  //发送密码响应给主机  
+  GAPBondMgr_PasscodeRsp(connectionHandle, SUCCESS, password);  
+} 
 
 
 static void tempHumidServiceCB( uint8 paramID )
