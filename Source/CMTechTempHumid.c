@@ -410,6 +410,9 @@ static void peripheralStateNotificationCB( gaprole_States_t newState )
         #if (defined HAL_LCD) && (HAL_LCD == TRUE)
           HalLcdWriteString( "Timed Out",  HAL_LCD_LINE_3 );
         #endif // (defined HAL_LCD) && (HAL_LCD == TRUE)
+        HAL_SYSTEM_RESET();
+        //GAPConfig_TerminateConn();
+        //GAPConfig_EnableAdv(TRUE);
       }
       break;
 
@@ -418,6 +421,7 @@ static void peripheralStateNotificationCB( gaprole_States_t newState )
         #if (defined HAL_LCD) && (HAL_LCD == TRUE)
           HalLcdWriteString( "Error",  HAL_LCD_LINE_3 );
         #endif // (defined HAL_LCD) && (HAL_LCD == TRUE)
+        HAL_SYSTEM_RESET();
       }
       break;
 
