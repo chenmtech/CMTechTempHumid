@@ -191,7 +191,7 @@ extern void TempHumid_Init( uint8 task_id )
   GAPConfig_SetPairBondingParam(GAPBOND_PAIRING_MODE_INITIATE, TRUE);
   
   // 每次重启，将密码修改为"000000"
-  GapConfig_WritePairPassword(0L);
+  //GapConfig_WritePairPassword(0L);
 
   // Initialize GATT attributes
   GGS_AddService( GATT_ALL_SERVICES );            // GAP
@@ -410,9 +410,9 @@ static void peripheralStateNotificationCB( gaprole_States_t newState )
         #if (defined HAL_LCD) && (HAL_LCD == TRUE)
           HalLcdWriteString( "Timed Out",  HAL_LCD_LINE_3 );
         #endif // (defined HAL_LCD) && (HAL_LCD == TRUE)
-        HAL_SYSTEM_RESET();
+        //HAL_SYSTEM_RESET();
         //GAPConfig_TerminateConn();
-        //GAPConfig_EnableAdv(TRUE);
+        GAPConfig_EnableAdv(TRUE);
       }
       break;
 
@@ -421,7 +421,7 @@ static void peripheralStateNotificationCB( gaprole_States_t newState )
         #if (defined HAL_LCD) && (HAL_LCD == TRUE)
           HalLcdWriteString( "Error",  HAL_LCD_LINE_3 );
         #endif // (defined HAL_LCD) && (HAL_LCD == TRUE)
-        HAL_SYSTEM_RESET();
+        //HAL_SYSTEM_RESET();
       }
       break;
 
