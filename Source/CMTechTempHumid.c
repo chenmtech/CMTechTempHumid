@@ -386,7 +386,9 @@ static void peripheralStateNotificationCB( gaprole_States_t newState )
       break;
 
     case GAPROLE_CONNECTED:
-      tempHumidInit();  
+      tempHumidInit();
+      
+      tempHumidReadAndTransferData();
       
       break;
 
