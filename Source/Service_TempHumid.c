@@ -378,9 +378,8 @@ static bStatus_t tempHumid_WriteAttrCB( uint16 connHandle, gattAttribute_t *pAtt
       if ( status == SUCCESS )
       {
         uint8 *pCurValue = (uint8 *)pAttr->pValue;
-
-        *pCurValue = pValue[0];
-        *(pCurValue+1) = pValue[1];
+        
+        VOID osal_memcpy(pCurValue, pValue, 2);
 
         if( pAttr->pValue == tempHumidHistoryTime )
         {
