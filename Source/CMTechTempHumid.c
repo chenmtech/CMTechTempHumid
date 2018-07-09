@@ -88,6 +88,14 @@ static uint16 period = DEFAULT_PERIOD;
 // 定时周期，单位：分钟
 static uint8 timerPeriod = 30;
 
+typedef enum  
+{  
+  PAIRSTATUS_PAIRED = 0,  
+  PAIRSTATUS_NO_PAIRED,  
+}PAIRSTATUS;  
+
+static PAIRSTATUS pairStatus = PAIRSTATUS_NO_PAIRED;       //配对状态，默认是没配对
+
 /*********************************************************************
  * 局部函数
 */
@@ -99,6 +107,8 @@ static void peripheralStateNotificationCB( gaprole_States_t newState );
 
 static void processPasscodeCB(uint8 *deviceAddr, uint16 connectionHandle, uint8 uiInputs, uint8 uiOutputs);
 
+static void processPairStateCB(uint16 connHandle, uint8 state, uint8 status);
+
 // 温湿度服务回调函数
 static void tempHumidServiceCB( uint8 paramID );
 
@@ -107,6 +117,8 @@ static void timerServiceCB( uint8 paramID );
 
 // 配对密码服务回调函数
 static void pairPwdServiceCB( uint8 paramID );
+
+
 
 // 初始化
 static void tempHumidInit();
@@ -141,8 +153,8 @@ static gapRolesCBs_t tempHumid_PeripheralCBs =
 // GAP Bond Manager 回调结构体实例，结构体是协议栈声明的
 static gapBondCBs_t tempHumid_BondMgrCBs =
 {
-  processPasscodeCB,                     // Passcode callback (not used by application)
-  NULL                      // Pairing / Bonding state Callback (not used by application)
+  processPasscodeCB,                     // Passcode callback
+  processPairStateCB                     // Pairing / Bonding state Callback
 };
 
 // 温湿度回调结构体实例，结构体是Serice_TempHumid中声明的
@@ -160,7 +172,7 @@ static timerServiceCBs_t timer_ServCBs =
 // 配对密码服务回调结构体实例，结构体是Serice_PairPwd中声明的
 static pairPwdServiceCBs_t pairPwd_ServCBs =
 {
-  pairPwdServiceCB    // 定时服务回调函数实例，函数是Serice_Timer中声明的
+  pairPwdServiceCB    // 配对密码服务回调函数实例，函数是Serice_Timer中声明的
 };
 
 
@@ -188,7 +200,8 @@ extern void TempHumid_Init( uint8 task_id )
   GAPConfig_SetGGSParam(attDeviceName);
 
   //配置配对和绑定参数
-  GAPConfig_SetPairBondingParam(GAPBOND_PAIRING_MODE_INITIATE, TRUE);
+  //GAPConfig_SetPairBondingParam(GAPBOND_PAIRING_MODE_INITIATE, TRUE);
+  GAPConfig_SetPairBondingParam(GAPBOND_PAIRING_MODE_WAIT_FOR_REQ, TRUE);
   
   // 每次重启，将密码修改为"000000"
   //GapConfig_WritePairPassword(0L);
@@ -450,6 +463,47 @@ static void processPasscodeCB(uint8 *deviceAddr, uint16 connectionHandle, uint8 
     
   //发送密码响应给主机  
   GAPBondMgr_PasscodeRsp(connectionHandle, SUCCESS, password);  
+} 
+
+static void processPairStateCB(uint16 connHandle, uint8 state, uint8 status)  
+{  
+  //主机发起连接，会进入开始配对状态  
+  if(state == GAPBOND_PAIRING_STATE_STARTED)  
+  {  
+    pairStatus = PAIRSTATUS_NO_PAIRED;  
+  }  
+    
+  //当主机提交密码后，会进入配对完成状态    
+  else if(state == GAPBOND_PAIRING_STATE_COMPLETE)  
+  {  
+    //配对成功  
+    if(status == SUCCESS)      
+    { 
+      pairStatus = PAIRSTATUS_PAIRED;  
+    }  
+      
+    //已配对过  
+    else if(status == SMP_PAIRING_FAILED_UNSPECIFIED)  
+    {       
+      pairStatus = PAIRSTATUS_PAIRED;  
+    }  
+      
+    //配对失败  
+    else  
+    {  
+      pairStatus = PAIRSTATUS_NO_PAIRED;  
+    }  
+      
+    //配对失败则断开连接  
+    if(pairStatus == PAIRSTATUS_NO_PAIRED)  
+    {  
+      GAPRole_TerminateConnection();  
+    }  
+  }  
+  else if (state == GAPBOND_PAIRING_STATE_BONDED)  
+  {
+    
+  }  
 } 
 
 

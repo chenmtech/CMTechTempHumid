@@ -107,7 +107,7 @@ static gattAttribute_t tempHumidServAttrTbl[] =
       // 实时温湿度数据特征值
       { 
         { ATT_UUID_SIZE, tempHumidDataUUID },
-        GATT_PERMIT_READ, 
+        GATT_PERMIT_AUTHEN_READ, 
         0, 
         tempHumidData 
       }, 
