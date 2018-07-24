@@ -175,6 +175,8 @@ static pairPwdServiceCBs_t pairPwd_ServCBs =
   pairPwdServiceCB    // 配对密码服务回调函数实例，函数是Serice_Timer中声明的
 };
 
+static bool result = false;
+
 
 /*********************************************************************
  * 公共函数
@@ -543,7 +545,7 @@ static void tempHumidServiceCB( uint8 paramID )
       TempHumid_GetParameter(TEMPHUMID_HISTORYTIME, time);
       osal_memcpy(data, (uint8*)&invalidValue, sizeof(float));
       osal_memcpy(data+4, (uint8*)&invalidValue, sizeof(float));
-      Queue_GetDataAtTime(data, time);
+      result = Queue_GetDataAtTime(data, time);
       TempHumid_SetParameter(TEMPHUMID_HISTORYDATA, 8, data);
     
       break;

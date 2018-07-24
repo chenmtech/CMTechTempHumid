@@ -12,9 +12,7 @@ static uint16 idx_send, idx_push;
 extern void Queue_Init()
 {
   length = QUEUE_L*QUEUE_UNIT_L;
-  int i = 0;
-  for(i = 0; i < length; i++)
-    buf[i] = 0xff;
+  osal_memset(buf, 0xff, length);
   idx_send = 0;
   idx_push = 0;   
 }
