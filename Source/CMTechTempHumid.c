@@ -175,8 +175,6 @@ static pairPwdServiceCBs_t pairPwd_ServCBs =
   pairPwdServiceCB    // 配对密码服务回调函数实例，函数是Serice_Timer中声明的
 };
 
-static bool result = false;
-
 
 /*********************************************************************
  * 公共函数
@@ -196,7 +194,8 @@ extern void TempHumid_Init( uint8 task_id )
   GAPConfig_EnableAdv(TRUE);
 
   //配置连接参数
-  GAPConfig_SetConnParam(100, 100, 1, 2000, 1);
+  //GAPConfig_SetConnParam(100, 100, 1, 2000, 1);
+  GAPConfig_SetConnParam(10, 10, 1, 2000, 1);
 
   //配置GGS，设置设备名
   GAPConfig_SetGGSParam(attDeviceName);
@@ -545,7 +544,7 @@ static void tempHumidServiceCB( uint8 paramID )
       TempHumid_GetParameter(TEMPHUMID_HISTORYTIME, time);
       osal_memcpy(data, (uint8*)&invalidValue, sizeof(float));
       osal_memcpy(data+4, (uint8*)&invalidValue, sizeof(float));
-      result = Queue_GetDataAtTime(data, time);
+      Queue_GetDataAtTime(data, time);
       TempHumid_SetParameter(TEMPHUMID_HISTORYDATA, 8, data);
     
       break;
