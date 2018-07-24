@@ -194,8 +194,8 @@ extern void TempHumid_Init( uint8 task_id )
   GAPConfig_EnableAdv(TRUE);
 
   //配置连接参数
+  GAPConfig_SetConnParam(100, 200, 0, 1000, 1);
   //GAPConfig_SetConnParam(100, 100, 1, 2000, 1);
-  GAPConfig_SetConnParam(10, 10, 1, 2000, 1);
 
   //配置GGS，设置设备名
   GAPConfig_SetGGSParam(attDeviceName);
@@ -426,8 +426,6 @@ static void peripheralStateNotificationCB( gaprole_States_t newState )
         #if (defined HAL_LCD) && (HAL_LCD == TRUE)
           HalLcdWriteString( "Timed Out",  HAL_LCD_LINE_3 );
         #endif // (defined HAL_LCD) && (HAL_LCD == TRUE)
-        //HAL_SYSTEM_RESET();
-        //GAPConfig_TerminateConn();
         GAPConfig_EnableAdv(TRUE);
       }
       break;
@@ -437,7 +435,6 @@ static void peripheralStateNotificationCB( gaprole_States_t newState )
         #if (defined HAL_LCD) && (HAL_LCD == TRUE)
           HalLcdWriteString( "Error",  HAL_LCD_LINE_3 );
         #endif // (defined HAL_LCD) && (HAL_LCD == TRUE)
-        //HAL_SYSTEM_RESET();
       }
       break;
 
