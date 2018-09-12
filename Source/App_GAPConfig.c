@@ -110,7 +110,7 @@ extern void GAPConfig_SetConnParam(uint16 minInt, uint16 maxInt, uint16 latency,
   GAPRole_SetParameter( GAPROLE_SLAVE_LATENCY, sizeof( uint16 ), &latency );
   GAPRole_SetParameter( GAPROLE_TIMEOUT_MULTIPLIER, sizeof( uint16 ), &timeout );  
   
-  GAP_SetParamValue( TGAP_CONN_EST_SUPERV_TIMEOUT, 1000);
+  GAP_SetParamValue( TGAP_CONN_EST_SUPERV_TIMEOUT, 300);
 
   //这个参数是指从连接建立后到从机更新连接参数之间需要延时的时间
   //如果主机不同意更新参数，从机可以选择断开连接或继续忍受现有参数
