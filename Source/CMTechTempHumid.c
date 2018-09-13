@@ -194,7 +194,7 @@ extern void TempHumid_Init( uint8 task_id )
   GAPConfig_EnableAdv(TRUE);
 
   //配置连接参数
-  GAPConfig_SetConnParam(80, 120, 0, 3000, 1);
+  GAPConfig_SetConnParam(20, 40, 5, 1000, 1);
   //GAPConfig_SetConnParam(100, 100, 1, 2000, 1);
 
   //配置GGS，设置设备名
