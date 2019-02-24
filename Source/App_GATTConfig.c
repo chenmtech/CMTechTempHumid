@@ -34,3 +34,12 @@ extern void GATTConfig_SetPairPwdService(pairPwdServiceCBs_t* appCBs)
   // 登记回调
   VOID PAIRPWD_RegisterAppCBs( appCBs );   
 }
+
+//配置电池电量服务
+extern void GATTConfig_SetBatteryService(batteryServiceCBs_t* appCBs)
+{
+  Battery_AddService( GATT_ALL_SERVICES );  // 加载服务  
+
+  // 登记回调
+  VOID Battery_RegisterAppCBs( appCBs );   
+}

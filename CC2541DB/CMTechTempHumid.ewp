@@ -276,7 +276,7 @@
           <state>HAL_LED=FALSE</state>
           <state>HAL_UART=FALSE</state>
           <state>HAL_KEY=FALSE</state>
-          <state>HAL_ADC=FALSE</state>
+          <state>HAL_ADC=TRUE</state>
         </option>
         <option>
           <name>CCPreprocFile</name>
@@ -6391,6 +6391,12 @@
       <name>$PROJ_DIR$\..\Source\CMUtil.h</name>
     </file>
     <file>
+      <name>$PROJ_DIR$\..\Source\Dev_Battery.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\Dev_Battery.h</name>
+    </file>
+    <file>
       <name>$PROJ_DIR$\..\Source\Dev_SI7021.cpp</name>
     </file>
     <file>
@@ -6404,6 +6410,12 @@
     </file>
     <file>
       <name>$PROJ_DIR$\..\Source\OSAL_CMTechTempHumid.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\Service_Battery.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\Service_Battery.h</name>
     </file>
     <file>
       <name>$PROJ_DIR$\..\Source\Service_PairPwd.c</name>

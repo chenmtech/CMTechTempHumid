@@ -12,6 +12,8 @@
 
 #include "Service_PairPwd.h"
 
+#include "Service_Battery.h"
+
 //配置TempHumid服务
 extern void GATTConfig_SetTempHumidService(tempHumidServiceCBs_t* appCBs);
 
@@ -21,6 +23,7 @@ extern void GATTConfig_SetTimerService(timerServiceCBs_t* appCBs);
 
 extern void GATTConfig_SetPairPwdService(pairPwdServiceCBs_t* appCBs);
 
-
+//配置电池电量服务
+extern void GATTConfig_SetBatteryService(batteryServiceCBs_t* appCBs);
 
 #endif
