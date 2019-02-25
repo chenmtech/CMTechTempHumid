@@ -6418,6 +6418,12 @@
       <name>$PROJ_DIR$\..\Source\Service_Battery.h</name>
     </file>
     <file>
+      <name>$PROJ_DIR$\..\Source\Service_DevInfo.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\..\Source\Service_DevInfo.h</name>
+    </file>
+    <file>
       <name>$PROJ_DIR$\..\Source\Service_PairPwd.c</name>
     </file>
     <file>
@@ -6651,12 +6657,6 @@
   </group>
   <group>
     <name>PROFILES</name>
-    <file>
-      <name>$PROJ_DIR$\..\..\Profiles\DevInfo\devinfoservice.c</name>
-    </file>
-    <file>
-      <name>$PROJ_DIR$\..\..\Profiles\DevInfo\devinfoservice.h</name>
-    </file>
     <file>
       <name>$PROJ_DIR$\..\..\Profiles\Roles\gap.c</name>
     </file>

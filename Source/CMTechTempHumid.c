@@ -19,7 +19,8 @@
 
 #include "gapgattserver.h"
 #include "gattservapp.h"
-#include "devinfoservice.h"
+//#include "devinfoservice.h"
+#include "Service_DevInfo.h"
 #include "Service_TempHumid.h"
 
 #include "Service_Timer.h"
