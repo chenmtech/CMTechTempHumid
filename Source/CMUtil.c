@@ -16,7 +16,8 @@ extern bStatus_t utilExtractUuid16(gattAttribute_t *pAttr, uint16 *pUuid)
   {
     // 16-bit UUID extracted bytes 12 and 13
     *pUuid = BUILD_UINT16( pAttr->type.uuid[12], pAttr->type.uuid[13]);
-  } else {
+  } 
+  else {
     *pUuid = 0xFFFF;
     status = FAILURE;
   }

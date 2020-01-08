@@ -118,7 +118,7 @@ static void processPasscodeCB(uint8 *deviceAddr, uint16 connectionHandle, uint8 
 static void processPairStateCB(uint16 connHandle, uint8 state, uint8 status);
 
 // 温湿度服务回调函数
-static void tempHumidServiceCB( uint8 paramID );
+static void tempHumidServiceCB( uint8 event );
 
 // 定时服务回调函数
 static void timerServiceCB( uint8 paramID );
@@ -545,14 +545,14 @@ static void processPairStateCB(uint16 connHandle, uint8 state, uint8 status)
 
 
 
-static void tempHumidServiceCB( uint8 paramID )
+static void tempHumidServiceCB( uint8 event )
 {
   uint8 newValue;
   uint8 time[2] = {0};
   uint8 data[8] = {-1};
   float invalidValue = -1.0;
 
-  switch (paramID)
+  switch (event)
   {
     case TEMPHUMID_CTRL:
       TempHumid_GetParameter( TEMPHUMID_CTRL, &newValue );

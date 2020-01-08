@@ -12,6 +12,8 @@
 #define TEMPHUMID_INTERVAL               2       //实时测量间隔
 #define TEMPHUMID_IRANGE                 3       //实时测量间隔范围
 
+// 温湿度数据属性在属性表中的数据
+#define TEMPHUMID_DATA_POS               2
 
 // 服务16位UUID
 #define TEMPHUMID_SERV_UUID               0xAA60     // 温湿度服务UUID
@@ -41,7 +43,7 @@ typedef struct
 {
   uint16 low;         
   uint16 high; 
-} temphumidIRange_t;
+} tempHumidIRange_t;
 
 
 // 当某个事件发生时调用的回调函数声明
@@ -66,6 +68,8 @@ extern bStatus_t TempHumid_SetParameter( uint8 param, uint8 len, void *value );
 
 // 读取特征参数
 extern bStatus_t TempHumid_GetParameter( uint8 param, void *value );
+
+extern bStatus_t TempHumid_TempHumidIndicate( uint16 connHandle, int16 temp, uint16 humid, uint8 taskId );
 
 #endif
 
