@@ -14,7 +14,6 @@
 /*
 * 常量
 */
-// 产生服务和特征的128位UUID
 // 温湿度服务UUID
 CONST uint8 tempHumidServUUID[ATT_UUID_SIZE] =
 { 
@@ -27,7 +26,7 @@ CONST uint8 tempHumidDataUUID[ATT_UUID_SIZE] =
   CM_UUID(TEMPHUMID_DATA_UUID)
 };
 
-// 测量间隔UUID
+// 测量时间间隔UUID
 CONST uint8 tempHumidIntervalUUID[ATT_BT_UUID_SIZE] =
 { 
   LO_UINT16(TEMPHUMID_INTERVAL_UUID), HI_UINT16(TEMPHUMID_INTERVAL_UUID)
@@ -48,12 +47,12 @@ static CONST gattAttrType_t tempHumidService = { ATT_UUID_SIZE, tempHumidServUUI
 
 // 温湿度数据
 static uint8 tempHumidDataProps = GATT_PROP_INDICATE;
-static attHandleValueInd_t dataIndi;
-static int16* pTemp = (int16*)dataIndi.value; 
-static uint16* pHumid = (uint16*)(dataIndi.value+2);
+static attHandleValueInd_t dataInd;
+static int16* pTemp = (int16*)dataInd.value; 
+static uint16* pHumid = (uint16*)(dataInd.value+2);
 static gattCharCfg_t tempHumidDataConfig[GATT_MAX_NUM_CONN];
 
-// 测量间隔
+// 测量时间间隔
 static uint8 tempHumidIntervalProps = GATT_PROP_READ | GATT_PROP_WRITE;
 static uint16 tempHumidInterval = 1;  
 
@@ -71,7 +70,7 @@ static gattAttribute_t tempHumidAttrTbl[] =
     (uint8 *)&tempHumidService                /* pValue */
   },
 
-    // 实时温湿度数据特征声明
+    // 实时温湿度数据特征值声明
     { 
       { ATT_BT_UUID_SIZE, characterUUID },
       GATT_PERMIT_READ, 
@@ -84,7 +83,7 @@ static gattAttribute_t tempHumidAttrTbl[] =
         { ATT_UUID_SIZE, tempHumidDataUUID },
         GATT_PERMIT_READ, 
         0, 
-        dataIndi.value 
+        dataInd.value 
       }, 
       
       // 温湿度数据CCC
@@ -95,7 +94,7 @@ static gattAttribute_t tempHumidAttrTbl[] =
         (uint8 *)tempHumidDataConfig
       },
 
-    // 测量间隔特征声明
+    // 测量时间间隔特征值声明
     {
       { ATT_BT_UUID_SIZE, characterUUID },
       GATT_PERMIT_READ,
@@ -103,7 +102,7 @@ static gattAttribute_t tempHumidAttrTbl[] =
       &tempHumidIntervalProps
     },
 
-      // 测量间隔特征值
+      // 测量时间间隔特征值
       {
         { ATT_UUID_SIZE, tempHumidIntervalUUID },
         GATT_PERMIT_READ | GATT_PERMIT_WRITE,
@@ -174,7 +173,7 @@ static uint8 tempHumid_ReadAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
   
   switch ( uuid )
   {
-    // 读测量间隔值  
+    // 读测量时间间隔值  
     case TEMPHUMID_INTERVAL_UUID:
       *pLen = 2;
       VOID osal_memcpy(pValue, &tempHumidInterval, 2);
@@ -182,9 +181,9 @@ static uint8 tempHumid_ReadAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
       
     // 读测量间隔范围值   
     case TEMPHUMID_IRANGE_UUID:
-        *pLen = 4;
-         VOID osal_memcpy( pValue, &tempHumidIRange, 4 ) ;
-        break;   
+      *pLen = 4;
+       VOID osal_memcpy( pValue, &tempHumidIRange, 4 ) ;
+      break;   
       
     default:
       *pLen = 0;
@@ -201,6 +200,7 @@ static bStatus_t tempHumid_WriteAttrCB( uint16 connHandle, gattAttribute_t *pAtt
 {
   bStatus_t status = SUCCESS;
   uint16 uuid;
+  uint16 interval;
   
   // If attribute permissions require authorization to write, return error
   if ( gattPermitAuthorWrite( pAttr->permissions ) )
@@ -217,10 +217,10 @@ static bStatus_t tempHumid_WriteAttrCB( uint16 connHandle, gattAttribute_t *pAtt
   {
     // 写温湿度数据的CCC  
     case GATT_CLIENT_CHAR_CFG_UUID:
-      if(pAttr->handle == tempHumidAttrTbl[TEMPHUMID_DATA_POS].handle)
+      if(pAttr->handle == tempHumidAttrTbl[TEMPHUMID_DATA_CHAR_CFG_POS].handle)
       {
         status = GATTServApp_ProcessCCCWriteReq( connHandle, pAttr, pValue, len,
-                                              offset, GATT_CLIENT_CFG_NOTIFY );
+                                              offset, GATT_CLIENT_CFG_INDICATE );
         if(status == SUCCESS)
         {
           uint16 value = BUILD_UINT16( pValue[0], pValue[1] );
@@ -250,8 +250,10 @@ static bStatus_t tempHumid_WriteAttrCB( uint16 connHandle, gattAttribute_t *pAtt
         status = ATT_ERR_ATTR_NOT_LONG;
       }
       
+      interval = (uint16)*pValue;
+      
       //validate range
-      if ((*pValue >= tempHumidIRange.high) | ((*pValue <= tempHumidIRange.low) & (*pValue != 0)))
+      if ((interval >= tempHumidIRange.high) | ((interval <= tempHumidIRange.low) & (interval != 0)))
       {
         status = ATT_ERR_INVALID_VALUE;
       }
@@ -349,7 +351,7 @@ extern bStatus_t TempHumid_SetParameter( uint8 param, uint8 len, void *value )
 
   switch ( param )
   {
-    // 设置测量周期  
+    // 设置测量时间间隔
     case TEMPHUMID_INTERVAL:
       if ( len == 2 )
       {
@@ -357,7 +359,7 @@ extern bStatus_t TempHumid_SetParameter( uint8 param, uint8 len, void *value )
       }
       else
       {
-        ret = bleInvalidRange;
+        ret = INVALIDPARAMETER;
       }
       break;
     
@@ -369,7 +371,7 @@ extern bStatus_t TempHumid_SetParameter( uint8 param, uint8 len, void *value )
       }
       else
       {
-        ret = bleInvalidRange;
+        ret = INVALIDPARAMETER;
       }
       break;  
 
@@ -388,11 +390,12 @@ extern bStatus_t TempHumid_GetParameter( uint8 param, void *value )
   
   switch ( param )
   {
-    // 获取测量间隔
+    // 获取测量时间间隔
     case TEMPHUMID_INTERVAL:
-      *((uint8*)value) = tempHumidInterval;
+      *((uint16*)value) = tempHumidInterval;
       break;
-      
+   
+    // 获取测量间隔范围  
     case TEMPHUMID_IRANGE:
       *((tempHumidIRange_t*)value) = tempHumidIRange;
       break;      
@@ -412,15 +415,14 @@ extern bStatus_t TempHumid_TempHumidIndicate( uint16 connHandle, int16 temp, uin
   // If indications enabled
   if ( value & GATT_CLIENT_CFG_INDICATE )
   {
-    
-    // Set the handle (uses stored relative handle to lookup actual handle)
-    dataIndi.handle = tempHumidAttrTbl[TEMPHUMID_DATA_POS].handle;
-    dataIndi.len = 4;
     *pTemp = temp;
     *pHumid = humid;
+    // Set the handle (uses stored relative handle to lookup actual handle)
+    dataInd.handle = tempHumidAttrTbl[TEMPHUMID_DATA_CHAR_CFG_POS].handle;
+    dataInd.len = 4;
   
     // Send the Indication
-    return GATT_Indication( connHandle, &dataIndi, FALSE, taskId );
+    return GATT_Indication( connHandle, &dataInd, FALSE, taskId );
   }
 
   return bleIncorrectMode;

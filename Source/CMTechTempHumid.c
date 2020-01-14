@@ -64,8 +64,8 @@
 // 开始采集状态
 #define STATUS_START          1            
 
-// 缺省采样周期，5秒
-#define DEFAULT_PERIOD         5000
+// 缺省测量间隔，5秒
+#define DEFAULT_PERIOD         5
 
 
 /*********************************************************************
@@ -74,20 +74,51 @@
 // 任务ID
 static uint8 tempHumid_TaskID;   
 
+// 连接句柄
+uint16 gapConnHandle;
+
 // GAP状态
 static gaprole_States_t gapProfileState = GAPROLE_INIT;
 
+// 广告数据
+static uint8 advertData[] = 
+{ 
+  // Flags; this sets the device to use limited discoverable
+  // mode (advertises for 30 seconds at a time) instead of general
+  // discoverable mode (advertises indefinitely)
+  0x02,   // length of this data
+  GAP_ADTYPE_FLAGS,
+  GAP_ADTYPE_FLAGS_GENERAL | GAP_ADTYPE_FLAGS_BREDR_NOT_SUPPORTED,
+
+  // service UUID
+  0x03,   // length of this data
+  GAP_ADTYPE_16BIT_MORE,
+  LO_UINT16( TEMPHUMID_SERV_UUID ),
+  HI_UINT16( TEMPHUMID_SERV_UUID ),
+
+};
+
+// GAP Profile - Name attribute for SCAN RSP data
+static uint8 scanResponseData[] =
+{
+  0x07,   // length of this data
+  GAP_ADTYPE_LOCAL_NAME_SHORT,   
+  'C',
+  'M',
+  '_',
+  'T',
+  'H',
+  'S'
+};
+
 // GAP GATT 设备名
-static uint8 attDeviceName[GAP_DEVICE_NAME_LEN] = "TempHumid";
+static uint8 attDeviceName[GAP_DEVICE_NAME_LEN] = "CM Temp Humid";
 
 // 当前状态
 static uint8 status = STATUS_STOP;
 
 // 数据采样周期，单位：ms
 static uint16 period = DEFAULT_PERIOD;
-
-// 定时周期，单位：分钟
-static uint8 timerPeriod = 30;
 
 // 电池电量采集状态
 static uint8 batteryStatus = STATUS_STOP;
@@ -96,35 +127,20 @@ static uint8 batteryStatus = STATUS_STOP;
 static uint8 batteryPeriod = 1;
 
 
-typedef enum  
-{  
-  PAIRSTATUS_PAIRED = 0,  
-  PAIRSTATUS_NO_PAIRED,  
-}PAIRSTATUS;  
-
-static PAIRSTATUS pairStatus = PAIRSTATUS_NO_PAIRED;       //配对状态，默认是没配对
-
 /*********************************************************************
  * 局部函数
 */
 // OSAL消息处理函数
 static void tempHumid_ProcessOSALMsg( osal_event_hdr_t *pMsg );
 
-// 状态变化通知回调函数
-static void peripheralStateNotificationCB( gaprole_States_t newState );
-
-static void processPasscodeCB(uint8 *deviceAddr, uint16 connectionHandle, uint8 uiInputs, uint8 uiOutputs);
-
-static void processPairStateCB(uint16 connHandle, uint8 state, uint8 status);
+// GAP状态改变回调函数
+static void peripheralGapStateCB( gaprole_States_t newState );
 
 // 温湿度服务回调函数
 static void tempHumidServiceCB( uint8 event );
 
 // 定时服务回调函数
 static void timerServiceCB( uint8 paramID );
-
-// 配对密码服务回调函数
-static void pairPwdServiceCB( uint8 paramID );
 
 // 电池电量服务回调函数
 static void batteryServiceCB( uint8 paramID );
@@ -163,15 +179,8 @@ static void batteryReadAndTransferData();
 // GAP Role 回调结构体实例，结构体是协议栈声明的
 static gapRolesCBs_t tempHumid_PeripheralCBs =
 {
-  peripheralStateNotificationCB,  // Profile State Change Callbacks
-  NULL                            // When a valid RSSI is read from controller (not used by application)
-};
-
-// GAP Bond Manager 回调结构体实例，结构体是协议栈声明的
-static gapBondCBs_t tempHumid_BondMgrCBs =
-{
-  processPasscodeCB,                     // Passcode callback
-  processPairStateCB                     // Pairing / Bonding state Callback
+  peripheralGapStateCB,  // Profile State Change Callbacks
+  NULL                   // When a valid RSSI is read from controller (not used by application)
 };
 
 // 温湿度回调结构体实例，结构体是Serice_TempHumid中声明的
@@ -186,17 +195,13 @@ static timerServiceCBs_t timer_ServCBs =
   timerServiceCB    // 定时服务回调函数实例，函数是Serice_Timer中声明的
 };
 
-// 配对密码服务回调结构体实例，结构体是Serice_PairPwd中声明的
-static pairPwdServiceCBs_t pairPwd_ServCBs =
-{
-  pairPwdServiceCB    // 配对密码服务回调函数实例，函数是Serice_Timer中声明的
-};
-
 // 电池电量服务回调结构体实例，结构体是Serice_Battery中声明的
 static batteryServiceCBs_t battery_ServCBs =
 {
   batteryServiceCB    // 电池电量服务回调函数实例，函数是Serice_Battery中声明的
 };
+
+
 
 
 /*********************************************************************
@@ -206,8 +211,100 @@ extern void TempHumid_Init( uint8 task_id )
 {
   tempHumid_TaskID = task_id;
   
-  //设置发射功率为4dB(可惜CC2541不支持4dB)
-  //HCI_EXT_SetTxPowerCmd (HCI_EXT_TX_POWER_4_DBM);  
+  // Setup the GAP Peripheral Role Profile
+  {
+    // 设置广告数据和扫描响应数据
+    GAPRole_SetParameter( GAPROLE_SCAN_RSP_DATA, sizeof ( scanResponseData ), scanResponseData );
+    GAPRole_SetParameter( GAPROLE_ADVERT_DATA, sizeof( advertData ), advertData );
+    
+    // 设置广告时间间隔
+    GAP_SetParamValue( TGAP_GEN_DISC_ADV_INT_MIN, 1600 ); // units of 0.625ms
+    GAP_SetParamValue( TGAP_GEN_DISC_ADV_INT_MAX, 1600 ); // units of 0.625ms
+    GAP_SetParamValue( TGAP_GEN_DISC_ADV_MIN, 0 ); // 不停地广播
+    
+    // 设置是否使能广告
+    uint8 initial_advertising_enable = TRUE;
+    GAPRole_SetParameter( GAPROLE_ADVERT_ENABLED, sizeof( uint8 ), &initial_advertising_enable );
+    
+    // 设置是否请求更新连接参数以及期望的连接参数
+    uint8 enable_update_request = TRUE;
+    GAPRole_SetParameter( GAPROLE_PARAM_UPDATE_ENABLE, sizeof( uint8 ), &enable_update_request );
+    uint16 desired_min_interval = 200;  // units of 1.25ms 
+    uint16 desired_max_interval = 1600; // units of 1.25ms
+    uint16 desired_slave_latency = 1;
+    uint16 desired_conn_timeout = 1000; // units of 10ms
+    GAPRole_SetParameter( GAPROLE_MIN_CONN_INTERVAL, sizeof( uint16 ), &desired_min_interval );
+    GAPRole_SetParameter( GAPROLE_MAX_CONN_INTERVAL, sizeof( uint16 ), &desired_max_interval );
+    GAPRole_SetParameter( GAPROLE_SLAVE_LATENCY, sizeof( uint16 ), &desired_slave_latency );
+    GAPRole_SetParameter( GAPROLE_TIMEOUT_MULTIPLIER, sizeof( uint16 ), &desired_conn_timeout );
+    
+    //这个参数是指从连接建立后到外设开始connection update procedure之间需要延时的时间(units of second)
+    //如果主机不同意更新参数，从机可以选择断开连接或继续忍受现有参数
+    GAP_SetParamValue( TGAP_CONN_PAUSE_PERIPHERAL, 1 ); 
+  }
+  
+  // 设置GGS设备名特征值
+  GGS_SetParameter( GGS_DEVICE_NAME_ATT, GAP_DEVICE_NAME_LEN, attDeviceName );
+
+  // Setup the GAP Bond Manager
+  // 与配对加密绑定有关设置项
+  {
+    uint32 passkey = 0; // passkey "000000"
+    uint8 pairMode = GAPBOND_PAIRING_MODE_INITIATE;
+    uint8 mitm = TRUE;
+    uint8 ioCap = GAPBOND_IO_CAP_DISPLAY_ONLY;
+    uint8 bonding = TRUE;
+    GAPBondMgr_SetParameter( GAPBOND_DEFAULT_PASSCODE, sizeof ( uint32 ), &passkey );
+    GAPBondMgr_SetParameter( GAPBOND_PAIRING_MODE, sizeof ( uint8 ), &pairMode );
+    GAPBondMgr_SetParameter( GAPBOND_MITM_PROTECTION, sizeof ( uint8 ), &mitm );
+    GAPBondMgr_SetParameter( GAPBOND_IO_CAPABILITIES, sizeof ( uint8 ), &ioCap );
+    GAPBondMgr_SetParameter( GAPBOND_BONDING_ENABLED, sizeof ( uint8 ), &bonding );
+  }  
+
+  // Setup the Heart Rate Characteristic Values
+  {
+    uint8 sensLoc = HEARTRATE_SENS_LOC_WRIST;
+    HeartRate_SetParameter( HEARTRATE_SENS_LOC, sizeof ( uint8 ), &sensLoc );
+  }
+  
+  // Setup Battery Characteristic Values
+  {
+    uint8 critical = DEFAULT_BATT_CRITICAL_LEVEL;
+    Batt_SetParameter( BATT_PARAM_CRITICAL_LEVEL, sizeof (uint8 ), &critical );
+  }
+  
+  // Initialize GATT attributes
+  GGS_AddService( GATT_ALL_SERVICES );         // GAP
+  GATTServApp_AddService( GATT_ALL_SERVICES ); // GATT attributes
+  HeartRate_AddService( GATT_ALL_SERVICES );
+  DevInfo_AddService( );
+  Batt_AddService( );
+  
+  // Register for Heart Rate service callback
+  HeartRate_Register( heartRateCB );
+  
+  // Register for Battery service callback;
+  Batt_Register ( heartRateBattCB );
+    
+  // For keyfob board set GPIO pins into a power-optimized state
+  // Note that there is still some leakage current from the buzzer,
+  // accelerometer, LEDs, and buttons on the PCB.
+  
+  P0SEL = 0; // Configure Port 0 as GPIO
+  P1SEL = 0; // Configure Port 1 as GPIO
+  P2SEL = 0; // Configure Port 2 as GPIO
+
+  P0DIR = 0xFC; // Port 0 pins P0.0 and P0.1 as input (buttons),
+                // all others (P0.2-P0.7) as output
+  P1DIR = 0xFF; // All port 1 pins (P1.0-P1.7) as output
+  P2DIR = 0x1F; // All port 1 pins (P2.0-P2.4) as output
+  
+  P0 = 0x03; // All pins on port 0 to low except for P0.0 and P0.1 (buttons)
+  P1 = 0;   // All pins on port 1 to low
+  P2 = 0;   // All pins on port 2 to low  
+  
+  // Setup a delayed profile startup
+  osal_set_event( tempHumid_TaskID, START_DEVICE_EVT );
 
   // GAP 配置
   //配置广播参数
@@ -223,12 +320,6 @@ extern void TempHumid_Init( uint8 task_id )
   //配置GGS，设置设备名
   GAPConfig_SetGGSParam(attDeviceName);
 
-  //配置配对和绑定参数
-  //GAPConfig_SetPairBondingParam(GAPBOND_PAIRING_MODE_INITIATE, TRUE);
-  GAPConfig_SetPairBondingParam(GAPBOND_PAIRING_MODE_WAIT_FOR_REQ, TRUE);
-  
-  // 每次重启，将密码修改为"000000"
-  //GapConfig_WritePairPassword(0L);
 
   // Initialize GATT attributes
   GGS_AddService( GATT_ALL_SERVICES );            // GAP
@@ -241,9 +332,7 @@ extern void TempHumid_Init( uint8 task_id )
   
   GATTConfig_SetTempHumidService(&tempHumid_ServCBs);  
   
-  GATTConfig_SetTimerService(&timer_ServCBs);  
-  
-  GATTConfig_SetPairPwdService(&pairPwd_ServCBs);
+  GATTConfig_SetTimerService(&timer_ServCBs); 
   
   GATTConfig_SetBatteryService(&battery_ServCBs);
 
@@ -396,7 +485,7 @@ static void tempHumid_ProcessOSALMsg( osal_event_hdr_t *pMsg )
 }
 
 
-static void peripheralStateNotificationCB( gaprole_States_t newState )
+static void peripheralGapStateCB( gaprole_States_t newState )
 {
   switch ( newState )
   {
@@ -490,60 +579,6 @@ static void peripheralStateNotificationCB( gaprole_States_t newState )
   gapProfileState = newState;
 
 }
-
-// 主机请求密码时的回调
-static void processPasscodeCB(uint8 *deviceAddr, uint16 connectionHandle, uint8 uiInputs, uint8 uiOutputs)    
-{    
-  //读密码  
-  uint32 password = 0L;
-  GapConfig_SNV_Password(GAP_PARI_PASSWORD_READ, (uint8 *)(&password), sizeof(uint32));  
-    
-  //发送密码响应给主机  
-  GAPBondMgr_PasscodeRsp(connectionHandle, SUCCESS, password);  
-} 
-
-static void processPairStateCB(uint16 connHandle, uint8 state, uint8 status)  
-{  
-  //主机发起连接，会进入开始配对状态  
-  if(state == GAPBOND_PAIRING_STATE_STARTED)  
-  {  
-    pairStatus = PAIRSTATUS_NO_PAIRED;  
-  }  
-    
-  //当主机提交密码后，会进入配对完成状态    
-  else if(state == GAPBOND_PAIRING_STATE_COMPLETE)  
-  {  
-    //配对成功  
-    if(status == SUCCESS)      
-    { 
-      pairStatus = PAIRSTATUS_PAIRED;  
-    }  
-      
-    //已配对过  
-    else if(status == SMP_PAIRING_FAILED_UNSPECIFIED)  
-    {       
-      pairStatus = PAIRSTATUS_PAIRED;  
-    }  
-      
-    //配对失败  
-    else  
-    {  
-      pairStatus = PAIRSTATUS_NO_PAIRED;  
-    }  
-      
-    //配对失败则断开连接  
-    if(pairStatus == PAIRSTATUS_NO_PAIRED)  
-    {  
-      GAPRole_TerminateConnection();  
-    }  
-  }  
-  else if (state == GAPBOND_PAIRING_STATE_BONDED)  
-  {
-    
-  }  
-} 
-
-
 
 static void tempHumidServiceCB( uint8 event )
 {
@@ -653,23 +688,6 @@ static void timerServiceCB( uint8 paramID )
       // Should not get here
       break;
   }
-}
-
-// 配对密码服务回调函数
-static void pairPwdServiceCB( uint8 paramID )
-{
-  switch (paramID)
-  {
-    case PAIRPWD_VALUE:
-      // 修改配对密码，1秒后断开连接
-      osal_start_timerEx( tempHumid_TaskID, TEMPHUMID_CHANGE_PAIRPWD_EVT, 1000 ); 
-      
-      break;
-      
-    default:
-      // Should not get here
-      break;
-  }  
 }
 
 // 初始化温湿度服务参数

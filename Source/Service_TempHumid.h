@@ -8,28 +8,24 @@
 
 // 温湿度服务参数
 #define TEMPHUMID_DATA                   0       //实时温湿度数据
-#define TEMPHUMID_DATA_CHAR_CFG          1       //实时测量控制
-#define TEMPHUMID_INTERVAL               2       //实时测量间隔
+#define TEMPHUMID_DATA_CHAR_CFG          1       //实时测量CCC
+#define TEMPHUMID_INTERVAL               2       //实时测量时间间隔
 #define TEMPHUMID_IRANGE                 3       //实时测量间隔范围
 
-// 温湿度数据属性在属性表中的数据
-#define TEMPHUMID_DATA_POS               2
+// 温湿度数据CCC在属性表中的位置
+#define TEMPHUMID_DATA_CHAR_CFG_POS      3
 
-// 服务16位UUID
+// 服务和特征值的16位UUID
 #define TEMPHUMID_SERV_UUID               0xAA60     // 温湿度服务UUID
 #define TEMPHUMID_DATA_UUID               0xAA61     // 实时温湿度数据UUID
-#define TEMPHUMID_INTERVAL_UUID           0x2A21     // 实时测量间隔UUID
+#define TEMPHUMID_INTERVAL_UUID           0x2A21     // 实时测量时间间隔UUID
 #define TEMPHUMID_IRANGE_UUID             0x2906     // 实时测量间隔范围UUID
-
-
 
 // 服务的bit field
 #define TEMPHUMID_SERVICE               0x00000001
 
-
 // 温湿度数据的字节长度
 #define TEMPHUMID_DATA_LEN             4       
-
 
 // 回调事件
 #define TEMPHUMID_DATA_IND_ENABLED          1
@@ -69,6 +65,7 @@ extern bStatus_t TempHumid_SetParameter( uint8 param, uint8 len, void *value );
 // 读取特征参数
 extern bStatus_t TempHumid_GetParameter( uint8 param, void *value );
 
+// indicate实时温湿度数据
 extern bStatus_t TempHumid_TempHumidIndicate( uint16 connHandle, int16 temp, uint16 humid, uint8 taskId );
 
 #endif
