@@ -120,12 +120,6 @@ static uint8 status = STATUS_STOP;
 // 数据采样周期，单位：ms
 static uint16 period = DEFAULT_PERIOD;
 
-// 电池电量采集状态
-static uint8 batteryStatus = STATUS_STOP;
-
-// 电池电量测量周期，单位：分钟
-static uint8 batteryPeriod = 1;
-
 
 /*********************************************************************
  * 局部函数
@@ -138,15 +132,6 @@ static void peripheralGapStateCB( gaprole_States_t newState );
 
 // 温湿度服务回调函数
 static void tempHumidServiceCB( uint8 event );
-
-// 定时服务回调函数
-static void timerServiceCB( uint8 paramID );
-
-// 电池电量服务回调函数
-static void batteryServiceCB( uint8 paramID );
-
-// 初始化
-static void tempHumidInit();
 
 // 启动采样
 static void tempHumidStart( void );
@@ -162,15 +147,6 @@ static void tempHumidReadAndStoreData();
 
 // 初始化IO管脚
 static void tempHumidInitIOPin();
-
-// 启动电池电量测量
-static void batteryStart( void );
-
-// 停止电池电量测量
-static void batteryStop( void );
-
-// 读取传输电池电量数据
-static void batteryReadAndTransferData();
 
 /*********************************************************************
  * PROFILE and SERVICE 回调结构体实例
@@ -195,20 +171,6 @@ static tempHumidServiceCBs_t tempHumid_ServCBs =
 {
   tempHumidServiceCB    // 温湿度服务回调函数实例，函数是Serice_TempHumid中声明的
 };
-
-// 定时服务回调结构体实例，结构体是Serice_Timer中声明的
-static timerServiceCBs_t timer_ServCBs =
-{
-  timerServiceCB    // 定时服务回调函数实例，函数是Serice_Timer中声明的
-};
-
-// 电池电量服务回调结构体实例，结构体是Serice_Battery中声明的
-static batteryServiceCBs_t battery_ServCBs =
-{
-  batteryServiceCB    // 电池电量服务回调函数实例，函数是Serice_Battery中声明的
-};
-
-
 
 
 /*********************************************************************
@@ -291,9 +253,6 @@ extern void TempHumid_Init( uint8 task_id )
     tempHumidInitIOPin();
   }
   
-  // 初始化
-  tempHumidInit();  
- 
   HCI_EXT_ClkDivOnHaltCmd( HCI_EXT_ENABLE_CLK_DIVIDE_ON_HALT );  
 
   // 启动设备
@@ -363,47 +322,6 @@ extern uint16 TempHumid_ProcessEvent( uint8 task_id, uint16 events )
     return (events ^ TEMPHUMID_START_PERIODIC_EVT);
   }
   
-  // 定时服务事件
-  if ( events & TEMPHUMID_START_TIMER_EVT )
-  {
-    uint8 value[4] = {0};
-    // 更新当前时间
-    Timer_GetParameter(TIMER_VALUE, value);
-    value[1] += timerPeriod;
-    if(value[1] >= 60) {
-      value[1] -= 60;
-      value[0]++;
-      if(value[0] == 24) {
-        value[0] = 0;
-      }
-    }
-    Timer_SetParameter(TIMER_VALUE, 4, value);
-
-    osal_start_timerEx( tempHumid_TaskID, TEMPHUMID_START_TIMER_EVT, timerPeriod*60000L );
-    
-    tempHumidReadAndStoreData();
-
-    return (events ^ TEMPHUMID_START_TIMER_EVT);
-  }  
-  
-  // 修改配对密码事件
-  if ( events & TEMPHUMID_CHANGE_PAIRPWD_EVT )
-  {
-    GAPConfig_TerminateConn();
-
-    return (events ^ TEMPHUMID_CHANGE_PAIRPWD_EVT);
-  }    
-  
-  if ( events & TEMPHUMID_START_BATTERY_EVT )
-  {
-    batteryReadAndTransferData();
-
-    if(batteryStatus == STATUS_START)
-      osal_start_timerEx( tempHumid_TaskID, TEMPHUMID_START_BATTERY_EVT, batteryPeriod*10000L );
-
-    return (events ^ TEMPHUMID_START_BATTERY_EVT);
-  }  
-
   // Discard unknown events
   return 0;
 }
@@ -435,6 +353,13 @@ static void peripheralGapStateCB( gaprole_States_t newState )
 {
   switch ( newState )
   {
+    // 已连接
+    case GAPROLE_CONNECTED:
+      // Get connection handle
+      GAPRole_GetParameter( GAPROLE_CONNHANDLE, &gapConnHandle );
+      
+      break;
+      
     case GAPROLE_STARTED:
       {
         uint8 ownAddress[B_ADDR_LEN];
@@ -468,14 +393,6 @@ static void peripheralGapStateCB( gaprole_States_t newState )
       }
       break;
 
-    case GAPROLE_CONNECTED:
-      tempHumidInit();
-      
-      tempHumidReadAndTransferData();
-      
-      batteryReadAndTransferData();
-      
-      break;
 
     case GAPROLE_WAITING:
       {
@@ -485,9 +402,6 @@ static void peripheralGapStateCB( gaprole_States_t newState )
           
         // 断开连接时，停止AD采集
         tempHumidStop();
-        
-        // 断开连接时，停止电池电量采集
-        batteryStop();
         
         // I2C的SDA, SCL设置为GPIO, 输出低电平，否则功耗很大
         HalI2CSetAsGPIO();
@@ -519,7 +433,6 @@ static void peripheralGapStateCB( gaprole_States_t newState )
         #endif // (defined HAL_LCD) && (HAL_LCD == TRUE)
       }
       break;
-
   }
   
   gapProfileState = newState;
@@ -571,88 +484,6 @@ static void tempHumidServiceCB( uint8 event )
   }
 }
 
-static void batteryServiceCB( uint8 paramID )
-{
-  uint8 newValue;
-
-  switch (paramID)
-  {
-    case BATTERY_CTRL:
-      Battery_GetParameter( BATTERY_CTRL, &newValue );
-      
-      // 停止采集
-      if ( newValue == BATTERY_CTRL_STOP)  
-      {
-        batteryStop();
-      }
-      // 开始采集
-      else if ( newValue == BATTERY_CTRL_START) 
-      {
-        batteryStart();
-      }
-      
-      break;
-
-    case BATTERY_PERI:
-      Battery_GetParameter( BATTERY_PERI, &newValue );
-      batteryPeriod = newValue;
-
-      break;
-      
-    default:
-      // Should not get here
-      break;
-  }
-}
-
-static void timerServiceCB( uint8 paramID )
-{
-  uint8 value[4];
-
-  switch (paramID)
-  {
-    case TIMER_VALUE:
-      Timer_GetParameter(TIMER_VALUE, value);
-      
-      if(value[3] == 0x00) {
-        osal_stop_timerEx( tempHumid_TaskID, TEMPHUMID_START_TIMER_EVT);  // 停止计时服务
-      } else {
-        if(value[2] >= 1 && value[2] <= 30) // 计时周期必须在1-30分钟
-        {
-          timerPeriod = value[2];   // 更新计时周期
-          uint8 tmp = value[1]%timerPeriod;
-          value[1] -= tmp;          // 调整minute
-          Timer_SetParameter(TIMER_VALUE, 4, value);    // 更新计时特征值
-          Queue_Init();
-          osal_start_reload_timer( tempHumid_TaskID, TEMPHUMID_START_TIMER_EVT, (timerPeriod-tmp)*60000L );
-        }
-      }
-      
-      break;
-      
-    default:
-      // Should not get here
-      break;
-  }
-}
-
-// 初始化温湿度服务参数
-static void tempHumidInit()
-{
-  status = STATUS_STOP;
-
-  uint8 tempHumidData[TEMPHUMID_DATA_LEN] = { 0 };
-  TempHumid_SetParameter( TEMPHUMID_DATA, TEMPHUMID_DATA_LEN, tempHumidData );
-  
-  // 停止采集
-  uint8 tempHumidCtrl = TEMPHUMID_CTRL_STOP;
-  TempHumid_SetParameter( TEMPHUMID_CTRL, sizeof(uint8), &tempHumidCtrl );  
-  
-  // 设置传输周期
-  uint8 tmp = DEFAULT_PERIOD/TEMPHUMID_PERIOD_UNIT;
-  TempHumid_SetParameter( TEMPHUMID_PERI, sizeof(uint8), (uint8*)&tmp ); 
-}
-
 // 启动采样
 static void tempHumidStart( void )
 {  
@@ -694,31 +525,5 @@ static void tempHumidReadAndStoreData()
   //加入保存数据的代码
   Queue_Push(data);
 }
-
-// 启动电池电量测量
-static void batteryStart( void )
-{  
-  if(batteryStatus == STATUS_STOP) {
-    batteryStatus = STATUS_START;
-    osal_start_timerEx( tempHumid_TaskID, TEMPHUMID_START_BATTERY_EVT, batteryPeriod*10000L);
-  }
-}
-
-// 停止电池电量测量
-static void batteryStop( void )
-{  
-  osal_stop_timerEx( tempHumid_TaskID, TEMPHUMID_START_BATTERY_EVT);
-  batteryStatus = STATUS_STOP;
-}
-
-// 读取传输电池电量数据
-static void batteryReadAndTransferData()
-{
-  uint8 batteryData = Battery_Measure();
-
-  Battery_SetParameter( BATTERY_DATA, 1, &batteryData);   
-}
-
-
 /*********************************************************************
 *********************************************************************/
