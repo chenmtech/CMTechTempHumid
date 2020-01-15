@@ -183,6 +183,13 @@ static gapRolesCBs_t tempHumid_PeripheralCBs =
   NULL                   // When a valid RSSI is read from controller (not used by application)
 };
 
+// 配对与绑定回调
+static gapBondCBs_t tempHumid_BondCBs =
+{
+  NULL,                   // Passcode callback
+  NULL                    // Pairing state callback
+};
+
 // 温湿度回调结构体实例，结构体是Serice_TempHumid中声明的
 static tempHumidServiceCBs_t tempHumid_ServCBs =
 {
@@ -214,8 +221,8 @@ extern void TempHumid_Init( uint8 task_id )
   // Setup the GAP Peripheral Role Profile
   {
     // 设置广告数据和扫描响应数据
-    GAPRole_SetParameter( GAPROLE_SCAN_RSP_DATA, sizeof ( scanResponseData ), scanResponseData );
     GAPRole_SetParameter( GAPROLE_ADVERT_DATA, sizeof( advertData ), advertData );
+    GAPRole_SetParameter( GAPROLE_SCAN_RSP_DATA, sizeof ( scanResponseData ), scanResponseData );
     
     // 设置广告时间间隔
     GAP_SetParamValue( TGAP_GEN_DISC_ADV_INT_MIN, 1600 ); // units of 0.625ms
@@ -226,7 +233,11 @@ extern void TempHumid_Init( uint8 task_id )
     uint8 initial_advertising_enable = TRUE;
     GAPRole_SetParameter( GAPROLE_ADVERT_ENABLED, sizeof( uint8 ), &initial_advertising_enable );
     
-    // 设置是否请求更新连接参数以及期望的连接参数
+    // 设置从连接建立到开始更新连接参数之间需要延时的时间(units of second)
+    // 主要给主机留出时间完成service discovery任务
+    GAP_SetParamValue( TGAP_CONN_PAUSE_PERIPHERAL, 2 ); 
+    
+    // 设置连接参数以及是否请求更新连接参数
     uint8 enable_update_request = TRUE;
     GAPRole_SetParameter( GAPROLE_PARAM_UPDATE_ENABLE, sizeof( uint8 ), &enable_update_request );
     uint16 desired_min_interval = 200;  // units of 1.25ms 
@@ -237,10 +248,6 @@ extern void TempHumid_Init( uint8 task_id )
     GAPRole_SetParameter( GAPROLE_MAX_CONN_INTERVAL, sizeof( uint16 ), &desired_max_interval );
     GAPRole_SetParameter( GAPROLE_SLAVE_LATENCY, sizeof( uint16 ), &desired_slave_latency );
     GAPRole_SetParameter( GAPROLE_TIMEOUT_MULTIPLIER, sizeof( uint16 ), &desired_conn_timeout );
-    
-    //这个参数是指从连接建立后到外设开始connection update procedure之间需要延时的时间(units of second)
-    //如果主机不同意更新参数，从机可以选择断开连接或继续忍受现有参数
-    GAP_SetParamValue( TGAP_CONN_PAUSE_PERIPHERAL, 1 ); 
   }
   
   // 设置GGS设备名特征值
@@ -261,82 +268,21 @@ extern void TempHumid_Init( uint8 task_id )
     GAPBondMgr_SetParameter( GAPBOND_BONDING_ENABLED, sizeof ( uint8 ), &bonding );
   }  
 
-  // Setup the Heart Rate Characteristic Values
+  // 设置温湿度计Characteristic Values
   {
-    uint8 sensLoc = HEARTRATE_SENS_LOC_WRIST;
-    HeartRate_SetParameter( HEARTRATE_SENS_LOC, sizeof ( uint8 ), &sensLoc );
-  }
-  
-  // Setup Battery Characteristic Values
-  {
-    uint8 critical = DEFAULT_BATT_CRITICAL_LEVEL;
-    Batt_SetParameter( BATT_PARAM_CRITICAL_LEVEL, sizeof (uint8 ), &critical );
+    uint16 interval = 1;
+    TempHumid_SetParameter( TEMPHUMID_INTERVAL, sizeof ( uint16 ), &interval );
   }
   
   // Initialize GATT attributes
   GGS_AddService( GATT_ALL_SERVICES );         // GAP
   GATTServApp_AddService( GATT_ALL_SERVICES ); // GATT attributes
-  HeartRate_AddService( GATT_ALL_SERVICES );
+  TempHumid_AddService( GATT_ALL_SERVICES ); // 温湿度服务
   DevInfo_AddService( );
-  Batt_AddService( );
   
-  // Register for Heart Rate service callback
-  HeartRate_Register( heartRateCB );
+  // 登记温湿度计的服务回调
+  TempHumid_RegisterAppCBs( &tempHumid_ServCBs );
   
-  // Register for Battery service callback;
-  Batt_Register ( heartRateBattCB );
-    
-  // For keyfob board set GPIO pins into a power-optimized state
-  // Note that there is still some leakage current from the buzzer,
-  // accelerometer, LEDs, and buttons on the PCB.
-  
-  P0SEL = 0; // Configure Port 0 as GPIO
-  P1SEL = 0; // Configure Port 1 as GPIO
-  P2SEL = 0; // Configure Port 2 as GPIO
-
-  P0DIR = 0xFC; // Port 0 pins P0.0 and P0.1 as input (buttons),
-                // all others (P0.2-P0.7) as output
-  P1DIR = 0xFF; // All port 1 pins (P1.0-P1.7) as output
-  P2DIR = 0x1F; // All port 1 pins (P2.0-P2.4) as output
-  
-  P0 = 0x03; // All pins on port 0 to low except for P0.0 and P0.1 (buttons)
-  P1 = 0;   // All pins on port 1 to low
-  P2 = 0;   // All pins on port 2 to low  
-  
-  // Setup a delayed profile startup
-  osal_set_event( tempHumid_TaskID, START_DEVICE_EVT );
-
-  // GAP 配置
-  //配置广播参数
-  GAPConfig_SetAdvParam(2000, TEMPHUMID_SERV_UUID);
-  
-  // 初始化立刻广播
-  GAPConfig_EnableAdv(TRUE);
-
-  //配置连接参数
-  GAPConfig_SetConnParam(20, 40, 0, 1500, 1);
-  //GAPConfig_SetConnParam(100, 100, 1, 2000, 1);
-
-  //配置GGS，设置设备名
-  GAPConfig_SetGGSParam(attDeviceName);
-
-
-  // Initialize GATT attributes
-  GGS_AddService( GATT_ALL_SERVICES );            // GAP
-  GATTServApp_AddService( GATT_ALL_SERVICES );    // GATT attributes
-  DevInfo_AddService();                           // Device Information Service
-  
-#if defined FEATURE_OAD
-  VOID OADTarget_AddService();                    // OAD Profile
-#endif
-  
-  GATTConfig_SetTempHumidService(&tempHumid_ServCBs);  
-  
-  GATTConfig_SetTimerService(&timer_ServCBs); 
-  
-  GATTConfig_SetBatteryService(&battery_ServCBs);
-
-
   //在这里初始化GPIO
   //第一：所有管脚，reset后的状态都是输入加上拉
   //第二：对于不用的IO，建议不连接到外部电路，且设为输入上拉
@@ -402,7 +348,7 @@ extern uint16 TempHumid_ProcessEvent( uint8 task_id, uint16 events )
     VOID GAPRole_StartDevice( &tempHumid_PeripheralCBs );
 
     // Start Bond Manager
-    VOID GAPBondMgr_Register( &tempHumid_BondMgrCBs );
+    VOID GAPBondMgr_Register( &tempHumid_BondCBs );
 
     return ( events ^ TEMPHUMID_START_DEVICE_EVT );
   }

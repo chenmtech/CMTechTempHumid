@@ -52,7 +52,7 @@ static int16* pTemp = (int16*)dataInd.value;
 static uint16* pHumid = (uint16*)(dataInd.value+2);
 static gattCharCfg_t tempHumidDataConfig[GATT_MAX_NUM_CONN];
 
-// 测量时间间隔
+// 测量时间间隔，units of second
 static uint8 tempHumidIntervalProps = GATT_PROP_READ | GATT_PROP_WRITE;
 static uint16 tempHumidInterval = 1;  
 
@@ -363,7 +363,7 @@ extern bStatus_t TempHumid_SetParameter( uint8 param, uint8 len, void *value )
       }
       break;
     
-    // 设置测量周期范围  
+    // 设置测量间隔范围  
     case TEMPHUMID_IRANGE:    
       if(len == 4)
       {
