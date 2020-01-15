@@ -104,7 +104,7 @@ static gattAttribute_t tempHumidAttrTbl[] =
 
       // 测量时间间隔特征值
       {
-        { ATT_UUID_SIZE, tempHumidIntervalUUID },
+        { ATT_BT_UUID_SIZE, tempHumidIntervalUUID },
         GATT_PERMIT_READ | GATT_PERMIT_WRITE,
         0,
         (uint8*)&tempHumidInterval
