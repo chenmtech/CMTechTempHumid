@@ -6,7 +6,7 @@
 * 否则只能读一次，就退出
 * Written by Chenm 2017-05-10
 
-* 搞清楚了I2C就是要每次读数据之前都要调用HalI2CInit初始化
+* 搞清楚了I2C就是要每次读数据之前都要调用HalI2CInit(其中Enable I2C)初始化
 * 否则就会出现上述错误
 * Written by Chenm 2018-03-06
 */
@@ -56,8 +56,9 @@ static void SI7021_Stop()
 * 公共函数
 */
 
-//测量湿度值
-extern float SI7021_MeasureHumidity()
+// 测量湿度值
+// 返回单位：0.01%R.H.
+extern uint16 SI7021_MeasureHumidity()
 {
   SI7021_Start();
   
@@ -69,16 +70,17 @@ extern float SI7021_MeasureHumidity()
   SI7021_Stop();
   
   long value = ( (((long)data[0] << 8) + data[1]) & ~3 );  
-  value = ( ((value*15625)>>13)-6000 );
+  value = ( ((value*3125)>>14)-600 );
   if(value < 0)
     value = 0;
-  else if(value > 100000)
-    value = 100000;
-  return (float)value/1000.0;
+  else if(value > 10000)
+    value = 10000;
+  return (uint16)value;
 }
 
-//测湿度之后读温度
-extern float SI7021_ReadTemperature()
+// 必须在测湿度之后紧接着读温度
+// 返回单位：0.01摄氏度
+extern int16 SI7021_ReadTemperature()
 {
   SI7021_Start();
   
@@ -89,12 +91,12 @@ extern float SI7021_ReadTemperature()
   SI7021_Stop();
   
   long value = ( (((long)data[0] << 8) + data[1]) & ~3 );    
-  value = ((value*21965)>>13)-46850;  
-  return (float)value/1000.0;
+  value = ((value*4393)>>14)-4685;  
+  return (int16)value;
 }
 
-//测温度
-extern float SI7021_MeasureTemperature()
+// 单独测温度
+extern int16 SI7021_MeasureTemperature()
 {
   SI7021_Start();
   
@@ -105,8 +107,8 @@ extern float SI7021_MeasureTemperature()
   SI7021_Stop();
   
   long value = ( (((long)data[0] << 8) + data[1]) & ~3 );    
-  value = ((value*21965)>>13)-46850;  
-  return (float)value/1000.0;  
+  value = ((value*4393)>>14)-4685;  
+  return (int16)value;  
 }
 
 //同时测湿度和温度
@@ -116,13 +118,4 @@ extern SI7021_HumiAndTemp SI7021_Measure()
   rtn.humid = SI7021_MeasureHumidity();
   rtn.temp = SI7021_ReadTemperature();
   return rtn;
-}
-
-// 同时测湿度和温度，并返回数组
-extern void SI7021_MeasureData(uint8* pData)
-{
-  float humid = SI7021_MeasureHumidity();
-  float temp = SI7021_ReadTemperature();
-  uint8* pt = osal_memcpy(pData, (uint8*)&humid, sizeof(float));
-  osal_memcpy(pt, (uint8*)&temp, sizeof(float));
 }

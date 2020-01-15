@@ -13,22 +13,8 @@
 
 // 温湿度任务事件
 #define TEMPHUMID_START_DEVICE_EVT                   0x0001     // 设备启动事件
-#define TEMPHUMID_START_PERIODIC_EVT                 0x0002     // 周期采集启动事件
-#define TEMPHUMID_START_TIMER_EVT                    0x0004     // 启动定时事件
-#define TEMPHUMID_CHANGE_PAIRPWD_EVT                 0x0008     // 修改配对密码事件
-#define TEMPHUMID_START_BATTERY_EVT                  0x0010     // 启动电池电量采集事件
+#define TEMPHUMID_START_PERIODIC_EVT                 0x0002     // 周期测量启动事件
 
-// 测量控制标记值
-#define TEMPHUMID_CTRL_STOP               0x00    // 停止测量
-#define TEMPHUMID_CTRL_START              0x01    // 开始测量 
-
-// 定时控制标记值
-#define TIMER_CTRL_STOP                   0x00    // 停止定时
-#define TIMER_CTRL_START                  0x01    // 开始定时 
-
-// 电池电量测量控制标记值
-#define BATTERY_CTRL_STOP               0x00    // 停止测量
-#define BATTERY_CTRL_START              0x01    // 开始测量 
 
 /*********************************************************************
  * MACROS

@@ -54,7 +54,7 @@ static gattCharCfg_t tempHumidDataConfig[GATT_MAX_NUM_CONN];
 
 // 测量时间间隔，units of second
 static uint8 tempHumidIntervalProps = GATT_PROP_READ | GATT_PROP_WRITE;
-static uint16 tempHumidInterval = 1;  
+static uint16 tempHumidInterval = 5;  
 
 // 测量间隔范围
 static tempHumidIRange_t  tempHumidIRange = {1,3600};
@@ -134,8 +134,6 @@ static uint8 tempHumid_ReadAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
 static bStatus_t tempHumid_WriteAttrCB( uint16 connHandle, gattAttribute_t *pAttr,
                                  uint8 *pValue, uint8 len, uint16 offset );
 
-// 连接状态改变回调
-static void tempHumid_HandleConnStatusCB( uint16 connHandle, uint8 changeType );
 
 // 服务给协议栈的回调结构体
 CONST gattServiceCBs_t tempHumidServCBs =
@@ -279,7 +277,7 @@ static bStatus_t tempHumid_WriteAttrCB( uint16 connHandle, gattAttribute_t *pAtt
   return status;
 }
 
-static void tempHumid_HandleConnStatusCB( uint16 connHandle, uint8 changeType )
+extern void tempHumid_HandleConnStatusCB( uint16 connHandle, uint8 changeType )
 { 
   // Make sure this is not loopback connection
   if ( connHandle != LOOPBACK_CONNHANDLE )

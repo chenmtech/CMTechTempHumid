@@ -10,62 +10,38 @@
 #include "OSAL.h"
 #include "OSAL_PwrMgr.h"
 #include "osal_snv.h"
-
+#include "linkdb.h"
 #include "OnBoard.h"
-
 #include "gatt.h"
-
 #include "hci.h"
-
 #include "gapgattserver.h"
 #include "gattservapp.h"
-//#include "devinfoservice.h"
 #include "Service_DevInfo.h"
 #include "Service_TempHumid.h"
-
-#include "Service_Timer.h"
-
-#include "hal_queue.h"
-
 #if defined ( PLUS_BROADCASTER )
   #include "peripheralBroadcaster.h"
 #else
   #include "peripheral.h"
 #endif
-
 #include "gapbondmgr.h"
-
-#include "App_GAPConfig.h"
-
-#include "App_GATTConfig.h"
-
 #include "hal_i2c.h"
-
 #include "Dev_Si7021.h"
-
 #include "CMTechTempHumid.h"
-
-#include "Dev_Battery.h"
-
 #if defined FEATURE_OAD
   #include "oad.h"
   #include "oad_target.h"
 #endif
-
 
 /*********************************************************************
  * 常量
 */
 #define INVALID_CONNHANDLE                    0xFFFF
 
-// 停止采集状态
+// 停止测量状态
 #define STATUS_STOP           0     
 
-// 开始采集状态
-#define STATUS_START          1            
-
-// 缺省测量间隔，5秒
-#define DEFAULT_PERIOD         5
+// 开始测量状态
+#define STATUS_START          1   
 
 
 /*********************************************************************
@@ -75,7 +51,7 @@
 static uint8 tempHumid_TaskID;   
 
 // 连接句柄
-uint16 gapConnHandle;
+uint16 gapConnHandle = INVALID_CONNHANDLE;
 
 // GAP状态
 static gaprole_States_t gapProfileState = GAPROLE_INIT;
@@ -98,7 +74,7 @@ static uint8 advertData[] =
 
 };
 
-// GAP Profile - Name attribute for SCAN RSP data
+// 扫描响应数据
 static uint8 scanResponseData[] =
 {
   0x07,   // length of this data
@@ -111,51 +87,36 @@ static uint8 scanResponseData[] =
   'S'
 };
 
-// GAP GATT 设备名
+// GGS 设备名
 static uint8 attDeviceName[GAP_DEVICE_NAME_LEN] = "CM Temp Humid";
 
-// 当前状态
+// 当前温湿度测量状态
 static uint8 status = STATUS_STOP;
 
-// 数据采样周期，单位：ms
-static uint16 period = DEFAULT_PERIOD;
+// 温湿度测量时间间隔，单位：秒, 默认5秒
+static uint16 interval = 5;
 
 
 /*********************************************************************
  * 局部函数
 */
-// OSAL消息处理函数
-static void tempHumid_ProcessOSALMsg( osal_event_hdr_t *pMsg );
 
-// GAP状态改变回调函数
-static void peripheralGapStateCB( gaprole_States_t newState );
-
-// 温湿度服务回调函数
-static void tempHumidServiceCB( uint8 event );
-
-// 启动采样
-static void tempHumidStart( void );
-
-// 停止采样
-static void tempHumidStop( void );
-
-// 读取传输数据
-static void tempHumidReadAndTransferData();
-
-// 读取并保存每半小时的数据
-static void tempHumidReadAndStoreData();
-
-// 初始化IO管脚
-static void tempHumidInitIOPin();
+static void tempHumidProcessOSALMsg( osal_event_hdr_t *pMsg ); // OSAL消息处理函数
+static void tempHumidGapStateCB( gaprole_States_t newState ); // GAP状态改变回调函数
+static void tempHumidServiceCB( uint8 event ); // 温湿度服务回调函数
+static void tempHumidStart( void ); // 启动测量
+static void tempHumidStop( void ); // 停止测量
+static void tempHumidMeasureAndIndicate(); // 测量并传输数据
+static void tempHumidInitIOPin(); // 初始化IO管脚
 
 /*********************************************************************
  * PROFILE and SERVICE 回调结构体实例
 */
 
-// GAP Role 回调结构体实例，结构体是协议栈声明的
-static gapRolesCBs_t tempHumid_PeripheralCBs =
+// GAP Role 回调结构体
+static gapRolesCBs_t tempHumid_GapStateCBs =
 {
-  peripheralGapStateCB,  // Profile State Change Callbacks
+  tempHumidGapStateCB,  // Profile State Change Callbacks
   NULL                   // When a valid RSSI is read from controller (not used by application)
 };
 
@@ -166,10 +127,10 @@ static gapBondCBs_t tempHumid_BondCBs =
   NULL                    // Pairing state callback
 };
 
-// 温湿度回调结构体实例，结构体是Serice_TempHumid中声明的
+// 温湿度回调结构体
 static tempHumidServiceCBs_t tempHumid_ServCBs =
 {
-  tempHumidServiceCB    // 温湿度服务回调函数实例，函数是Serice_TempHumid中声明的
+  tempHumidServiceCB    // 温湿度服务回调函数
 };
 
 
@@ -216,7 +177,7 @@ extern void TempHumid_Init( uint8 task_id )
   GGS_SetParameter( GGS_DEVICE_NAME_ATT, GAP_DEVICE_NAME_LEN, attDeviceName );
 
   // Setup the GAP Bond Manager
-  // 与配对加密绑定有关设置项
+  // 设置配对、加密和绑定有关项
   {
     uint32 passkey = 0; // passkey "000000"
     uint8 pairMode = GAPBOND_PAIRING_MODE_INITIATE;
@@ -232,15 +193,14 @@ extern void TempHumid_Init( uint8 task_id )
 
   // 设置温湿度计Characteristic Values
   {
-    uint16 interval = 1;
-    TempHumid_SetParameter( TEMPHUMID_INTERVAL, sizeof ( uint16 ), &interval );
+    TempHumid_SetParameter( TEMPHUMID_INTERVAL, sizeof(uint16), &interval );
   }
   
   // Initialize GATT attributes
   GGS_AddService( GATT_ALL_SERVICES );         // GAP
   GATTServApp_AddService( GATT_ALL_SERVICES ); // GATT attributes
   TempHumid_AddService( GATT_ALL_SERVICES ); // 温湿度服务
-  DevInfo_AddService( );
+  DevInfo_AddService( ); // device information service
   
   // 登记温湿度计的服务回调
   TempHumid_RegisterAppCBs( &tempHumid_ServCBs );
@@ -291,7 +251,7 @@ extern uint16 TempHumid_ProcessEvent( uint8 task_id, uint16 events )
 
     if ( (pMsg = osal_msg_receive( tempHumid_TaskID )) != NULL )
     {
-      tempHumid_ProcessOSALMsg( (osal_event_hdr_t *)pMsg );
+      tempHumidProcessOSALMsg( (osal_event_hdr_t *)pMsg );
 
       // Release the OSAL message
       VOID osal_msg_deallocate( pMsg );
@@ -304,7 +264,7 @@ extern uint16 TempHumid_ProcessEvent( uint8 task_id, uint16 events )
   if ( events & TEMPHUMID_START_DEVICE_EVT )
   {    
     // Start the Device
-    VOID GAPRole_StartDevice( &tempHumid_PeripheralCBs );
+    VOID GAPRole_StartDevice( &tempHumid_GapStateCBs );
 
     // Start Bond Manager
     VOID GAPBondMgr_Register( &tempHumid_BondCBs );
@@ -314,10 +274,10 @@ extern uint16 TempHumid_ProcessEvent( uint8 task_id, uint16 events )
   
   if ( events & TEMPHUMID_START_PERIODIC_EVT )
   {
-    tempHumidReadAndTransferData();
+    tempHumidMeasureAndIndicate();
 
     if(status == STATUS_START)
-      osal_start_timerEx( tempHumid_TaskID, TEMPHUMID_START_PERIODIC_EVT, period );
+      osal_start_timerEx( tempHumid_TaskID, TEMPHUMID_START_PERIODIC_EVT, ((uint32)interval)*1000 );
 
     return (events ^ TEMPHUMID_START_PERIODIC_EVT);
   }
@@ -338,7 +298,7 @@ extern uint16 TempHumid_ProcessEvent( uint8 task_id, uint16 events )
  *
  * @return  none
  */
-static void tempHumid_ProcessOSALMsg( osal_event_hdr_t *pMsg )
+static void tempHumidProcessOSALMsg( osal_event_hdr_t *pMsg )
 {
   switch ( pMsg->event )
   {
@@ -348,91 +308,23 @@ static void tempHumid_ProcessOSALMsg( osal_event_hdr_t *pMsg )
   }
 }
 
-
-static void peripheralGapStateCB( gaprole_States_t newState )
+static void tempHumidGapStateCB( gaprole_States_t newState )
 {
-  switch ( newState )
+  // 已连接
+  if( newState == GAPROLE_CONNECTED)
   {
-    // 已连接
-    case GAPROLE_CONNECTED:
-      // Get connection handle
-      GAPRole_GetParameter( GAPROLE_CONNHANDLE, &gapConnHandle );
-      
-      break;
-      
-    case GAPROLE_STARTED:
-      {
-        uint8 ownAddress[B_ADDR_LEN];
-        uint8 systemId[DEVINFO_SYSTEM_ID_LEN];
-
-        GAPRole_GetParameter(GAPROLE_BD_ADDR, ownAddress);
-
-        // use 6 bytes of device address for 8 bytes of system ID value
-        systemId[0] = ownAddress[0];
-        systemId[1] = ownAddress[1];
-        systemId[2] = ownAddress[2];
-
-        // set middle bytes to zero
-        systemId[4] = 0x00;
-        systemId[3] = 0x00;
-
-        // shift three bytes up
-        systemId[7] = ownAddress[5];
-        systemId[6] = ownAddress[4];
-        systemId[5] = ownAddress[3];
-
-        DevInfo_SetParameter(DEVINFO_SYSTEM_ID, DEVINFO_SYSTEM_ID_LEN, systemId);
-      }
-      break;
-
-    case GAPROLE_ADVERTISING:
-      {
-        #if (defined HAL_LCD) && (HAL_LCD == TRUE)
-          HalLcdWriteString( "Advertising",  HAL_LCD_LINE_3 );
-        #endif // (defined HAL_LCD) && (HAL_LCD == TRUE)
-      }
-      break;
-
-
-    case GAPROLE_WAITING:
-      {
-        #if (defined HAL_LCD) && (HAL_LCD == TRUE)
-          HalLcdWriteString( "Disconnected",  HAL_LCD_LINE_3 );
-        #endif // (defined HAL_LCD) && (HAL_LCD == TRUE)
-          
-        // 断开连接时，停止AD采集
-        tempHumidStop();
-        
-        // I2C的SDA, SCL设置为GPIO, 输出低电平，否则功耗很大
-        HalI2CSetAsGPIO();
-
-      }
-      break;
-
-    case GAPROLE_WAITING_AFTER_TIMEOUT:
-      {
-        #if (defined HAL_LCD) && (HAL_LCD == TRUE)
-          HalLcdWriteString( "Timed Out",  HAL_LCD_LINE_3 );
-        #endif // (defined HAL_LCD) && (HAL_LCD == TRUE)
-        //GAPConfig_EnableAdv(TRUE);
-      }
-      break;
-
-    case GAPROLE_ERROR:
-      {
-        #if (defined HAL_LCD) && (HAL_LCD == TRUE)
-          HalLcdWriteString( "Error",  HAL_LCD_LINE_3 );
-        #endif // (defined HAL_LCD) && (HAL_LCD == TRUE)
-      }
-      break;
-
-    default:
-      {
-        #if (defined HAL_LCD) && (HAL_LCD == TRUE)
-          HalLcdWriteString( "",  HAL_LCD_LINE_3 );
-        #endif // (defined HAL_LCD) && (HAL_LCD == TRUE)
-      }
-      break;
+    // Get connection handle
+    GAPRole_GetParameter( GAPROLE_CONNHANDLE, &gapConnHandle );
+  }
+  // 断开连接
+  else if(gapProfileState == GAPROLE_CONNECTED && 
+            newState != GAPROLE_CONNECTED)
+  {
+    tempHumidStop();
+    
+    tempHumidInitIOPin();
+    
+    tempHumid_HandleConnStatusCB( gapConnHandle, LINKDB_STATUS_UPDATE_REMOVED );
   }
   
   gapProfileState = newState;
@@ -441,43 +333,21 @@ static void peripheralGapStateCB( gaprole_States_t newState )
 
 static void tempHumidServiceCB( uint8 event )
 {
-  uint8 newValue;
-  uint8 time[2] = {0};
-  uint8 data[8] = {-1};
-  float invalidValue = -1.0;
-
   switch (event)
   {
-    case TEMPHUMID_CTRL:
-      TempHumid_GetParameter( TEMPHUMID_CTRL, &newValue );
+    case TEMPHUMID_DATA_IND_ENABLED:
+      tempHumidStart();
       
-      // 停止采集
-      if ( newValue == TEMPHUMID_CTRL_STOP)  
-      {
-        tempHumidStop();
-      }
-      // 开始采集
-      else if ( newValue == TEMPHUMID_CTRL_START) 
-      {
-        tempHumidStart();
-      }
-      
+      break;
+        
+    case TEMPHUMID_DATA_IND_DISABLED:
+      tempHumidStop();
       break;
 
-    case TEMPHUMID_PERI:
-      TempHumid_GetParameter( TEMPHUMID_PERI, &newValue );
-      period = newValue*TEMPHUMID_PERIOD_UNIT;
-
+    case TEMPHUMID_INTERVAL_SET:
+      TempHumid_GetParameter( TEMPHUMID_INTERVAL, &interval );
       break;
       
-    case TEMPHUMID_HISTORYTIME:
-      TempHumid_GetParameter(TEMPHUMID_HISTORYTIME, time);
-      osal_memcpy(data, (uint8*)&invalidValue, sizeof(float));
-      osal_memcpy(data+4, (uint8*)&invalidValue, sizeof(float));
-      Queue_GetDataAtTime(data, time);
-      TempHumid_SetParameter(TEMPHUMID_HISTORYDATA, 8, data);
-    
-      break;
     default:
       // Should not get here
       break;
@@ -489,7 +359,7 @@ static void tempHumidStart( void )
 {  
   if(status == STATUS_STOP) {
     status = STATUS_START;
-    osal_start_timerEx( tempHumid_TaskID, TEMPHUMID_START_PERIODIC_EVT, period);
+    osal_start_timerEx( tempHumid_TaskID, TEMPHUMID_START_PERIODIC_EVT, interval);
   }
 }
 
@@ -497,33 +367,17 @@ static void tempHumidStart( void )
 static void tempHumidStop( void )
 {  
   status = STATUS_STOP;
+  osal_stop_timerEx( tempHumid_TaskID, TEMPHUMID_START_PERIODIC_EVT ); 
 }
 
-// 读取传输数据
-static void tempHumidReadAndTransferData()
+// 测量传输数据
+static void tempHumidMeasureAndIndicate()
 {
-  uint8 data[TEMPHUMID_DATA_LEN] = {0};
-  SI7021_MeasureData(data);
+  uint16 humid = SI7021_MeasureHumidity();
+  int16 temp = SI7021_ReadTemperature();
 
-  TempHumid_SetParameter( TEMPHUMID_DATA, TEMPHUMID_DATA_LEN, data); 
+  TempHumid_TempHumidIndicate( gapConnHandle, temp, humid, tempHumid_TaskID); 
 }
 
-// 读取并保存当前温湿度数据
-static void tempHumidReadAndStoreData()
-{
-  uint8 value[4] = {0};
-  Timer_GetParameter(TIMER_VALUE, value);
-  uint8 data[10] = {0};
-  data[0] = value[0];
-  data[1] = value[1];
-  
-  // 前两次不稳定，获取第三次数据
-  SI7021_Measure();
-  SI7021_Measure();
-  SI7021_MeasureData(data+2);
-  
-  //加入保存数据的代码
-  Queue_Push(data);
-}
 /*********************************************************************
 *********************************************************************/

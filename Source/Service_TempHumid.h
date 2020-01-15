@@ -59,6 +59,8 @@ extern bStatus_t TempHumid_AddService( uint32 services );
 // 登记应用层提供的回调结构体实例
 extern bStatus_t TempHumid_RegisterAppCBs( tempHumidServiceCBs_t *appCallbacks );
 
+extern void tempHumid_HandleConnStatusCB( uint16 connHandle, uint8 changeType );
+
 // 设置特征参数
 extern bStatus_t TempHumid_SetParameter( uint8 param, uint8 len, void *value );
 
