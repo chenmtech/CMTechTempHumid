@@ -37,7 +37,7 @@
 #define STATUS_MEAS_STOP  0     
 #define STATUS_MEAS_START 1   
 
-#define DEFAULT_MEAS_PERIOD 5 // default T&H measurement period, uints: second
+#define DEFAULT_MEAS_PERIOD 10 // default T&H measurement period, uints: second
 // 
 static uint8 taskID;   
 static uint16 gapConnHandle = INVALID_CONNHANDLE;
@@ -343,7 +343,7 @@ static void thServiceCB( uint8 event )
   }
 }
 
-// 启动采样
+// 
 static void startTHMeas( void )
 {  
   if(status == STATUS_MEAS_STOP) {
@@ -352,7 +352,7 @@ static void startTHMeas( void )
   }
 }
 
-// 停止采样
+// 
 static void stopTHMeas( void )
 {  
   status = STATUS_MEAS_STOP;
