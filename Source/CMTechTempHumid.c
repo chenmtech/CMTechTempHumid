@@ -25,56 +25,39 @@
 #endif
 #include "gapbondmgr.h"
 #include "hal_i2c.h"
-#include "Dev_Si7021.h"
 #include "CMTechTempHumid.h"
 #if defined FEATURE_OAD
   #include "oad.h"
   #include "oad_target.h"
 #endif
 
-/*********************************************************************
- * 常量
-*/
-#define INVALID_CONNHANDLE                    0xFFFF
 
-// 停止测量状态
-#define STATUS_STOP           0     
+#define INVALID_CONNHANDLE 0xFFFF
 
-// 开始测量状态
-#define STATUS_START          1   
+#define STATUS_MEAS_STOP  0     
+#define STATUS_MEAS_START 1   
 
-
-/*********************************************************************
- * 局部变量
-*/
-// 任务ID
-static uint8 tempHumid_TaskID;   
-
-// 连接句柄
-uint16 gapConnHandle = INVALID_CONNHANDLE;
-
-// GAP状态
+#define DEFAULT_MEAS_PERIOD 5 // default T&H measurement period, uints: second
+// 
+static uint8 taskID;   
+static uint16 gapConnHandle = INVALID_CONNHANDLE;
 static gaprole_States_t gapProfileState = GAPROLE_INIT;
 
-// 广告数据
+// advertising data
 static uint8 advertData[] = 
 { 
-  // Flags; this sets the device to use limited discoverable
-  // mode (advertises for 30 seconds at a time) instead of general
-  // discoverable mode (advertises indefinitely)
   0x02,   // length of this data
   GAP_ADTYPE_FLAGS,
   GAP_ADTYPE_FLAGS_GENERAL | GAP_ADTYPE_FLAGS_BREDR_NOT_SUPPORTED,
 
-  // service UUID
+  // T&H service UUID
   0x03,   // length of this data
   GAP_ADTYPE_16BIT_MORE,
   LO_UINT16( TEMPHUMID_SERV_UUID ),
   HI_UINT16( TEMPHUMID_SERV_UUID ),
-
 };
 
-// 扫描响应数据
+// scan response data
 static uint8 scanResponseData[] =
 {
   0x07,   // length of this data
@@ -87,82 +70,73 @@ static uint8 scanResponseData[] =
   'S'
 };
 
-// GGS 设备名
+// GGS device name
 static uint8 attDeviceName[GAP_DEVICE_NAME_LEN] = "CM Temp Humid";
 
-// 当前温湿度测量状态
-static uint8 status = STATUS_STOP;
+// current measurement status
+static uint8 status = STATUS_MEAS_STOP;
 
-// 温湿度测量时间间隔，单位：秒, 默认5秒
-static uint16 interval = 5;
+// measurement interval
+static uint16 interval = DEFAULT_MEAS_PERIOD;
 
 
-/*********************************************************************
- * 局部函数
-*/
+static void gapRoleStateCB( gaprole_States_t newState ); // GAP Role callback function
+static void thServiceCB( uint8 event ); // T&H callback function
 
-static void tempHumidProcessOSALMsg( osal_event_hdr_t *pMsg ); // OSAL消息处理函数
-static void tempHumidGapStateCB( gaprole_States_t newState ); // GAP状态改变回调函数
-static void tempHumidServiceCB( uint8 event ); // 温湿度服务回调函数
-static void tempHumidStart( void ); // 启动测量
-static void tempHumidStop( void ); // 停止测量
-static void tempHumidMeasureAndIndicate(); // 测量并传输数据
-static void tempHumidInitIOPin(); // 初始化IO管脚
-
-/*********************************************************************
- * PROFILE and SERVICE 回调结构体实例
-*/
-
-// GAP Role 回调结构体
-static gapRolesCBs_t tempHumid_GapStateCBs =
+// GAP Role callback struct
+static gapRolesCBs_t gapRoleStateCBs =
 {
-  tempHumidGapStateCB,  // Profile State Change Callbacks
+  gapRoleStateCB,  // Profile State Change Callbacks
   NULL                   // When a valid RSSI is read from controller (not used by application)
 };
 
-// 配对与绑定回调
-static gapBondCBs_t tempHumid_BondCBs =
+// bond callback struct
+static gapBondCBs_t thBondCBs =
 {
   NULL,                   // Passcode callback
   NULL                    // Pairing state callback
 };
 
-// 温湿度回调结构体
-static tempHumidServiceCBs_t tempHumid_ServCBs =
+// T&H callback struct
+static thServiceCBs_t thServCBs =
 {
-  tempHumidServiceCB    // 温湿度服务回调函数
+  thServiceCB    
 };
 
+
+static void processOSALMsg( osal_event_hdr_t *pMsg ); // 
+static void startTHMeas( void ); // start T&H measurement
+static void stopTHMeas( void ); // stop T&H measurement
+static void initIOPin(); // initialize I/O pins
 
 /*********************************************************************
  * 公共函数
  */
 extern void TempHumid_Init( uint8 task_id )
 {
-  tempHumid_TaskID = task_id;
+  taskID = task_id;
   
   // Setup the GAP Peripheral Role Profile
   {
-    // 设置广告数据和扫描响应数据
+    // 
     GAPRole_SetParameter( GAPROLE_ADVERT_DATA, sizeof( advertData ), advertData );
     GAPRole_SetParameter( GAPROLE_SCAN_RSP_DATA, sizeof ( scanResponseData ), scanResponseData );
     
-    // 设置广告时间间隔
+    // 
     GAP_SetParamValue( TGAP_GEN_DISC_ADV_INT_MIN, 1600 ); // units of 0.625ms
     GAP_SetParamValue( TGAP_GEN_DISC_ADV_INT_MAX, 1600 ); // units of 0.625ms
     GAP_SetParamValue( TGAP_GEN_DISC_ADV_MIN, 0 ); // 不停地广播
     
-    // 设置是否使能广告
-    uint8 initial_advertising_enable = TRUE;
-    GAPRole_SetParameter( GAPROLE_ADVERT_ENABLED, sizeof( uint8 ), &initial_advertising_enable );
+    // enable advertising
+    uint8 advertising = TRUE;
+    GAPRole_SetParameter( GAPROLE_ADVERT_ENABLED, sizeof( uint8 ), &advertising );
     
-    // 设置从连接建立到开始更新连接参数之间需要延时的时间(units of second)
-    // 主要给主机留出时间完成service discovery任务
+    // set the pause time from the connection and the update of the connection parameters
+    // during the time, client can finish the tasks e.g. service discovery 
+    // the unit of time is second
     GAP_SetParamValue( TGAP_CONN_PAUSE_PERIPHERAL, 2 ); 
     
-    // 设置连接参数以及是否请求更新连接参数
-    uint8 enable_update_request = TRUE;
-    GAPRole_SetParameter( GAPROLE_PARAM_UPDATE_ENABLE, sizeof( uint8 ), &enable_update_request );
+    // set the connection parameter
     uint16 desired_min_interval = 200;  // units of 1.25ms 
     uint16 desired_max_interval = 1600; // units of 1.25ms
     uint16 desired_slave_latency = 1;
@@ -171,13 +145,14 @@ extern void TempHumid_Init( uint8 task_id )
     GAPRole_SetParameter( GAPROLE_MAX_CONN_INTERVAL, sizeof( uint16 ), &desired_max_interval );
     GAPRole_SetParameter( GAPROLE_SLAVE_LATENCY, sizeof( uint16 ), &desired_slave_latency );
     GAPRole_SetParameter( GAPROLE_TIMEOUT_MULTIPLIER, sizeof( uint16 ), &desired_conn_timeout );
+    uint8 enable_update_request = TRUE;
+    GAPRole_SetParameter( GAPROLE_PARAM_UPDATE_ENABLE, sizeof( uint8 ), &enable_update_request );
   }
   
-  // 设置GGS设备名特征值
+  // set GGS device name
   GGS_SetParameter( GGS_DEVICE_NAME_ATT, GAP_DEVICE_NAME_LEN, attDeviceName );
 
   // Setup the GAP Bond Manager
-  // 设置配对、加密和绑定有关项
   {
     uint32 passkey = 0; // passkey "000000"
     uint8 pairMode = GAPBOND_PAIRING_MODE_WAIT_FOR_REQ;
@@ -191,7 +166,7 @@ extern void TempHumid_Init( uint8 task_id )
     GAPBondMgr_SetParameter( GAPBOND_BONDING_ENABLED, sizeof ( uint8 ), &bonding );
   }  
 
-  // 设置温湿度计Characteristic Values
+  // set T&H Characteristic Values
   {
     TempHumid_SetParameter( TEMPHUMID_INTERVAL, sizeof(uint16), &interval );
   }
@@ -199,29 +174,28 @@ extern void TempHumid_Init( uint8 task_id )
   // Initialize GATT attributes
   GGS_AddService( GATT_ALL_SERVICES );         // GAP
   GATTServApp_AddService( GATT_ALL_SERVICES ); // GATT attributes
-  TempHumid_AddService( GATT_ALL_SERVICES ); // 温湿度服务
+  TempHumid_AddService( GATT_ALL_SERVICES ); // Temperature&Humid service
   DevInfo_AddService( ); // device information service
   
-  // 登记温湿度计的服务回调
-  TempHumid_RegisterAppCBs( &tempHumid_ServCBs );
+  TempHumid_RegisterAppCBs( &thServCBs );
   
   //在这里初始化GPIO
   //第一：所有管脚，reset后的状态都是输入加上拉
   //第二：对于不用的IO，建议不连接到外部电路，且设为输入上拉
   //第三：对于会用到的IO，就要根据具体外部电路连接情况进行有效设置，防止耗电
   {
-    tempHumidInitIOPin();
+    initIOPin();
   }
   
   HCI_EXT_ClkDivOnHaltCmd( HCI_EXT_ENABLE_CLK_DIVIDE_ON_HALT );  
 
   // 启动设备
-  osal_set_event( tempHumid_TaskID, TEMPHUMID_START_DEVICE_EVT );
+  osal_set_event( taskID, TEMPHUMID_START_DEVICE_EVT );
 }
 
 
 // 初始化IO管脚
-static void tempHumidInitIOPin()
+static void initIOPin()
 {
   // 全部设为GPIO
   P0SEL = 0; 
@@ -249,9 +223,9 @@ extern uint16 TempHumid_ProcessEvent( uint8 task_id, uint16 events )
   {
     uint8 *pMsg;
 
-    if ( (pMsg = osal_msg_receive( tempHumid_TaskID )) != NULL )
+    if ( (pMsg = osal_msg_receive( taskID )) != NULL )
     {
-      tempHumidProcessOSALMsg( (osal_event_hdr_t *)pMsg );
+      processOSALMsg( (osal_event_hdr_t *)pMsg );
 
       // Release the OSAL message
       VOID osal_msg_deallocate( pMsg );
@@ -264,22 +238,23 @@ extern uint16 TempHumid_ProcessEvent( uint8 task_id, uint16 events )
   if ( events & TEMPHUMID_START_DEVICE_EVT )
   {    
     // Start the Device
-    VOID GAPRole_StartDevice( &tempHumid_GapStateCBs );
+    VOID GAPRole_StartDevice( &gapRoleStateCBs );
 
     // Start Bond Manager
-    VOID GAPBondMgr_Register( &tempHumid_BondCBs );
+    VOID GAPBondMgr_Register( &thBondCBs );
 
     return ( events ^ TEMPHUMID_START_DEVICE_EVT );
   }
   
-  if ( events & TEMPHUMID_START_PERIODIC_EVT )
+  if ( events & TEMPHUMID_MEAS_PERIODIC_EVT )
   {
-    tempHumidMeasureAndIndicate();
+    if(gapProfileState == GAPROLE_CONNECTED && status == STATUS_MEAS_START) {
+      TempHumid_TempHumidIndicate( gapConnHandle, taskID); 
+      
+      osal_start_timerEx( taskID, TEMPHUMID_MEAS_PERIODIC_EVT, ((uint32)interval)*1000 );
+    }
 
-    if(status == STATUS_START)
-      osal_start_timerEx( tempHumid_TaskID, TEMPHUMID_START_PERIODIC_EVT, ((uint32)interval)*1000 );
-
-    return (events ^ TEMPHUMID_START_PERIODIC_EVT);
+    return (events ^ TEMPHUMID_MEAS_PERIODIC_EVT);
   }
   
   // Discard unknown events
@@ -298,7 +273,7 @@ extern uint16 TempHumid_ProcessEvent( uint8 task_id, uint16 events )
  *
  * @return  none
  */
-static void tempHumidProcessOSALMsg( osal_event_hdr_t *pMsg )
+static void processOSALMsg( osal_event_hdr_t *pMsg )
 {
   switch ( pMsg->event )
   {
@@ -308,7 +283,7 @@ static void tempHumidProcessOSALMsg( osal_event_hdr_t *pMsg )
   }
 }
 
-static void tempHumidGapStateCB( gaprole_States_t newState )
+static void gapRoleStateCB( gaprole_States_t newState )
 {
   // 已连接
   if( newState == GAPROLE_CONNECTED)
@@ -320,28 +295,42 @@ static void tempHumidGapStateCB( gaprole_States_t newState )
   else if(gapProfileState == GAPROLE_CONNECTED && 
             newState != GAPROLE_CONNECTED)
   {
-    tempHumidStop();
+    stopTHMeas();
+    //initIOPin();
+  }
+  // if started
+  else if (newState == GAPROLE_STARTED)
+  {
+    // Set the system ID from the bd addr
+    uint8 systemId[DEVINFO_SYSTEM_ID_LEN];
+    GAPRole_GetParameter(GAPROLE_BD_ADDR, systemId);
     
-    tempHumidInitIOPin();
+    // shift three bytes up
+    systemId[7] = systemId[5];
+    systemId[6] = systemId[4];
+    systemId[5] = systemId[3];
     
-    tempHumid_HandleConnStatusCB( gapConnHandle, LINKDB_STATUS_UPDATE_REMOVED );
+    // set middle bytes to zero
+    systemId[4] = 0;
+    systemId[3] = 0;
+    
+    DevInfo_SetParameter(DEVINFO_SYSTEM_ID, DEVINFO_SYSTEM_ID_LEN, systemId);
   }
   
   gapProfileState = newState;
 
 }
 
-static void tempHumidServiceCB( uint8 event )
+static void thServiceCB( uint8 event )
 {
   switch (event)
   {
     case TEMPHUMID_DATA_IND_ENABLED:
-      tempHumidStart();
-      
+      startTHMeas();
       break;
         
     case TEMPHUMID_DATA_IND_DISABLED:
-      tempHumidStop();
+      stopTHMeas();
       break;
 
     case TEMPHUMID_INTERVAL_SET:
@@ -355,29 +344,17 @@ static void tempHumidServiceCB( uint8 event )
 }
 
 // 启动采样
-static void tempHumidStart( void )
+static void startTHMeas( void )
 {  
-  if(status == STATUS_STOP) {
-    status = STATUS_START;
-    osal_start_timerEx( tempHumid_TaskID, TEMPHUMID_START_PERIODIC_EVT, interval);
+  if(status == STATUS_MEAS_STOP) {
+    status = STATUS_MEAS_START;
+    osal_start_timerEx( taskID, TEMPHUMID_MEAS_PERIODIC_EVT, 0);
   }
 }
 
 // 停止采样
-static void tempHumidStop( void )
+static void stopTHMeas( void )
 {  
-  status = STATUS_STOP;
-  osal_stop_timerEx( tempHumid_TaskID, TEMPHUMID_START_PERIODIC_EVT ); 
+  status = STATUS_MEAS_STOP;
+  osal_stop_timerEx( taskID, TEMPHUMID_MEAS_PERIODIC_EVT ); 
 }
-
-// 测量传输数据
-static void tempHumidMeasureAndIndicate()
-{
-  uint16 humid = SI7021_MeasureHumidity();
-  int16 temp = SI7021_ReadTemperature();
-
-  TempHumid_TempHumidIndicate( gapConnHandle, temp, humid, tempHumid_TaskID); 
-}
-
-/*********************************************************************
-*********************************************************************/
