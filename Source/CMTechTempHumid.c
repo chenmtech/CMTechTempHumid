@@ -249,9 +249,8 @@ extern uint16 TempHumid_ProcessEvent( uint8 task_id, uint16 events )
   if ( events & TEMPHUMID_MEAS_PERIODIC_EVT )
   {
     if(gapProfileState == GAPROLE_CONNECTED && status == STATUS_MEAS_START) {
+      osal_start_timerEx( taskID, TEMPHUMID_MEAS_PERIODIC_EVT, interval*1000 );
       TempHumid_TempHumidIndicate( gapConnHandle, taskID); 
-      
-      osal_start_timerEx( taskID, TEMPHUMID_MEAS_PERIODIC_EVT, ((uint32)interval)*1000 );
     }
 
     return (events ^ TEMPHUMID_MEAS_PERIODIC_EVT);
@@ -348,7 +347,7 @@ static void startTHMeas( void )
 {  
   if(status == STATUS_MEAS_STOP) {
     status = STATUS_MEAS_START;
-    osal_start_timerEx( taskID, TEMPHUMID_MEAS_PERIODIC_EVT, 0);
+    osal_start_timerEx( taskID, TEMPHUMID_MEAS_PERIODIC_EVT, interval*1000);
   }
 }
 

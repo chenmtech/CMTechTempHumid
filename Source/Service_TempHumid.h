@@ -30,7 +30,7 @@
 // callback events
 #define TEMPHUMID_DATA_IND_ENABLED          1
 #define TEMPHUMID_DATA_IND_DISABLED         2
-#define TEMPHUMID_INTERVAL_SET              3
+#define TEMPHUMID_INTERVAL_SET              4
 
 /**
  * Thermometer Interval Range 
