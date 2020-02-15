@@ -33,7 +33,7 @@
 #define TEMPHUMID_INTERVAL_SET              4
 
 /**
- * Thermometer Interval Range 
+ * T&H Interval Range 
  */
 typedef struct
 {
