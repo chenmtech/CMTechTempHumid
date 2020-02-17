@@ -256,18 +256,6 @@ extern uint16 TempHumid_ProcessEvent( uint8 task_id, uint16 events )
   return 0;
 }
 
-
-
-
-/*********************************************************************
- * @fn      simpleBLEPeripheral_ProcessOSALMsg
- *
- * @brief   Process an incoming task message.
- *
- * @param   pMsg - message to process
- *
- * @return  none
- */
 static void processOSALMsg( osal_event_hdr_t *pMsg )
 {
   switch ( pMsg->event )
